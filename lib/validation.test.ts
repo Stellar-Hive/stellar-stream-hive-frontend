@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { I128_MAX, checkAmount, checkRecipientNotSender } from "./validation";
+import { I128_MAX, checkAmount, checkRecipientNotSender, isValidStreamId } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
 
 const base = (input: string, decimals = 7) => {
@@ -78,6 +78,22 @@ describe("checkRecipientNotSender", () => {
     expect(checkRecipientNotSender("GOTHER", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("GABC", null)).toEqual({ ok: true });
+  });
+});
+
+describe("isValidStreamId", () => {
+  it("accepts non-negative decimal integers, including a leading zero and large u64 values", () => {
+    expect(isValidStreamId("0")).toBe(true);
+    expect(isValidStreamId("1")).toBe(true);
+    expect(isValidStreamId("42")).toBe(true);
+    expect(isValidStreamId("007")).toBe(true);
+    expect(isValidStreamId("18446744073709551615")).toBe(true); // u64::MAX
+  });
+
+  it("rejects anything that isn't a plain unsigned integer string", () => {
+    for (const bad of ["abc", "", " ", "1.5", "-1", "+1", "1e3", "0x10", "1,000", "1 2", " 1", "1 "]) {
+      expect(isValidStreamId(bad), JSON.stringify(bad)).toBe(false);
+    }
   });
 });
 

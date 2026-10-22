@@ -51,3 +51,14 @@ export function checkRecipientNotSender(recipient: string, sender: string | null
   }
   return { ok: true };
 }
+
+/**
+ * Stream ids are Soroban `u64` values, so the only valid route param is a
+ * non-negative, unsigned decimal integer with no leading `+`/`-`, decimal
+ * point, or extraneous characters. Rejecting anything else up front avoids
+ * calling the API/contract with a bad id (which otherwise surfaces as a
+ * confusing fetch error or a `BigInt` `SyntaxError`).
+ */
+export function isValidStreamId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
