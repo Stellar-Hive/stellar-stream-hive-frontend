@@ -5,10 +5,27 @@
  */
 import { rpc as SorobanRpc, Networks, StrKey } from "@stellar/stellar-sdk";
 
-export const NETWORK = (process.env.NEXT_PUBLIC_STELLAR_NETWORK || "TESTNET") as
-  | "TESTNET"
-  | "PUBLIC"
-  | "FUTURENET";
+type StellarNetwork = "TESTNET" | "PUBLIC" | "FUTURENET";
+
+const VALID_NETWORKS: readonly StellarNetwork[] = ["TESTNET", "PUBLIC", "FUTURENET"];
+
+function resolveNetwork(raw: string | undefined): StellarNetwork {
+  if (!raw) return "TESTNET";
+
+  if ((VALID_NETWORKS as readonly string[]).includes(raw)) {
+    return raw as StellarNetwork;
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `Unknown NEXT_PUBLIC_STELLAR_NETWORK value "${raw}"; expected one of ${VALID_NETWORKS.join(
+      ", ",
+    )}. Falling back to TESTNET.`,
+  );
+  return "TESTNET";
+}
+
+export const NETWORK = resolveNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK);
 
 export const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ||

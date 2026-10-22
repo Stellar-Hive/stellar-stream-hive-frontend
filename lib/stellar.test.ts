@@ -77,3 +77,37 @@ describe("nativeTokenContractId", () => {
     expect(nativeTokenContractId()).toBe(NATIVE_XLM_CONTRACT_IDS.TESTNET);
   });
 });
+
+describe("NETWORK validation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("falls back to TESTNET and logs a warning for an unknown network value", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "MAINNET");
+    vi.resetModules();
+
+    const { NETWORK } = await import("./stellar");
+
+    expect(NETWORK).toBe("TESTNET");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain("MAINNET");
+
+    warnSpy.mockRestore();
+  });
+
+  it("accepts a valid PUBLIC network value without warning", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "PUBLIC");
+    vi.resetModules();
+
+    const { NETWORK } = await import("./stellar");
+
+    expect(NETWORK).toBe("PUBLIC");
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+});
