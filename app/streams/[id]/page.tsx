@@ -72,11 +72,19 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   const contractConfigured = isStreamContractConfigured();
   const contractId = contractConfigured ? getStreamContractId() : null;
 
+  // The connected wallet determines where "Back" should return the user to:
+  // the Sending list if they're the sender, Receiving if they're the
+  // recipient, otherwise fall back to the home page.
+  const isSender = wallet.publicKey != null && wallet.publicKey === stream.sender;
+  const isRecipient = wallet.publicKey != null && wallet.publicKey === stream.recipient;
+  const backHref = isSender ? "/sending" : isRecipient ? "/receiving" : "/";
+  const backLabel = isSender ? "Back to sending" : isRecipient ? "Back to receiving" : "Back home";
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-muted hover:text-white">
-          ← Back home
+        <Link href={backHref} className="text-sm text-muted hover:text-white">
+          ← {backLabel}
         </Link>
         <div className="flex items-center gap-3">
           <CopyButton
