@@ -130,6 +130,11 @@ lib/
   streaming.ts                Client-side streamed-amount math (mirrors the contract)
   format.ts                   BigInt <-> decimal string formatting, address shortening
   api.ts                      Indexer API client
+  validation.ts               Input validation for addresses, amounts and form fields
+  tokens.ts                   Supported token list and token lookup helpers
+  tokenMetadata.ts            Token metadata (symbol, decimals) loading and caching
+  streamMapping.ts            Mapping indexer API and contract responses into `Stream`
+  streamList.ts               Status filters and CSV export for stream lists
 types/index.ts                 Shared domain types
 ```
 

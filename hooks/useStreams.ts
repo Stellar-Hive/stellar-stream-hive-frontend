@@ -27,31 +27,45 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!address) {
-      setStreams([]);
-      setIsLoading(false);
-      return;
-    }
+  const load = useCallback(
+    async (isStale: () => boolean = () => false) => {
+      if (!address) {
+        if (!isStale()) {
+          setStreams([]);
+          setIsLoading(false);
+        }
+        return;
+      }
 
-    setIsLoading(true);
-    setError(null);
-    try {
-      const results = role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
-      setStreams(results);
-    } catch (err) {
-      // A failed page (including any page after the first in a paged fetch)
-      // rejects the whole request, so we never keep a partial list around.
-      setError(err instanceof Error ? err.message : "Failed to load streams.");
-      setStreams([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address, role]);
+      setIsLoading(true);
+      setError(null);
+      try {
+        const results = role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
+        if (isStale()) return;
+        setStreams(results);
+      } catch (err) {
+        if (isStale()) return;
+        // A failed page (including any page after the first in a paged fetch)
+        // rejects the whole request, so we never keep a partial list around.
+        setError(err instanceof Error ? err.message : "Failed to load streams.");
+        setStreams([]);
+      } finally {
+        if (!isStale()) setIsLoading(false);
+      }
+    },
+    [address, role],
+  );
 
   useEffect(() => {
-    load();
+    let ignore = false;
+    load(() => ignore);
+    return () => {
+      ignore = true;
+    };
   }, [load]);
 
-  return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch: load };
+  const refetch = useCallback(() => load(), [load]);
+=======
+
+  return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch };
 }

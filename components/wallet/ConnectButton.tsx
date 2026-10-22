@@ -47,6 +47,20 @@ export function ConnectButton() {
     }
   }, [menuOpen]);
 
+  if (wallet.isDetecting) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-busy="true"
+        aria-label="Detecting Freighter wallet"
+        className="btn-secondary text-sm opacity-60"
+      >
+        <Spinner size="sm" decorative /> Checking wallet…
+      </button>
+    );
+  }
+
   if (!wallet.isFreighterInstalled) {
     return (
       <a
