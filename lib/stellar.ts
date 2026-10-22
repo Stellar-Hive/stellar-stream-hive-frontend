@@ -20,7 +20,13 @@ export const SOROBAN_RPC_URL =
 export const HORIZON_URL =
   process.env.NEXT_PUBLIC_HORIZON_URL || "https://horizon-testnet.stellar.org";
 
-export const STELLAR_EXPERT_NETWORK: "testnet" | "public" = NETWORK === "PUBLIC" ? "public" : "testnet";
+/**
+ * Stellar Expert network slug for building explorer links. Stellar Expert
+ * does not index Futurenet, so this is `null` in that case — callers must
+ * hide explorer links rather than fabricate a wrong (testnet) one.
+ */
+export const STELLAR_EXPERT_NETWORK: "testnet" | "public" | null =
+  NETWORK === "PUBLIC" ? "public" : NETWORK === "FUTURENET" ? null : "testnet";
 
 let cachedServer: SorobanRpc.Server | null = null;
 

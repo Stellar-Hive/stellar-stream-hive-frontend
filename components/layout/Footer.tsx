@@ -10,7 +10,7 @@ export function Footer() {
           <p>Stellar Stream Hive — an open-source Stellar Development Foundation grant project.</p>
           <p className="font-mono text-xs">
             Network: {NETWORK}
-            {streamContractId && (
+            {streamContractId && STELLAR_EXPERT_NETWORK && (
               <>
                 {" · "}
                 <a

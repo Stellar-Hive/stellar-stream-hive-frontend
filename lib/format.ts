@@ -92,14 +92,24 @@ export function shortenAddress(address: string, lead: number = 4, trail: number 
   return `${address.slice(0, lead)}…${address.slice(-trail)}`;
 }
 
-/** Builds a Stellar Expert explorer URL for an account or contract address. */
-export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for an account or contract address.
+ * Returns `null` when `network` is `null` (e.g. Futurenet, which Stellar
+ * Expert does not index) so callers can hide the link instead of pointing
+ * at the wrong network.
+ */
+export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" | null = "testnet"): string | null {
+  if (network === null) return null;
   const kind = address.startsWith("C") ? "contract" : "account";
   return `https://stellar.expert/explorer/${network}/${kind}/${address}`;
 }
 
-/** Builds a Stellar Expert explorer URL for a transaction hash. */
-export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for a transaction hash. Returns
+ * `null` when `network` is `null` (see {@link stellarExpertAccountUrl}).
+ */
+export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" | null = "testnet"): string | null {
+  if (network === null) return null;
   return `https://stellar.expert/explorer/${network}/tx/${hash}`;
 }
 

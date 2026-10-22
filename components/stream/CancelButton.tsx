@@ -188,14 +188,21 @@ export function CancelButton({
         {status === "success" && txHash && (
           <div className="mb-4">
             <p className="mb-2 text-sm font-medium text-primary">Stream cancelled.</p>
-            <a
-              href={stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK)}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-accent underline"
-            >
-              View transaction on Stellar Expert
-            </a>
+            {(() => {
+              const explorerUrl = stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK);
+              return (
+                explorerUrl && (
+                  <a
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-accent underline"
+                  >
+                    View transaction on Stellar Expert
+                  </a>
+                )
+              );
+            })()}
           </div>
         )}
 
