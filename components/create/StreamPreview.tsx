@@ -1,7 +1,8 @@
 "use client";
 
 import { formatDistanceStrict } from "date-fns";
-import { formatRate } from "@/lib/format";
+import { formatBaseUnits, formatRateFromBaseUnits } from "@/lib/format";
+import { checkAmount } from "@/lib/validation";
 import type { TokenInfo } from "@/types";
 
 export interface StreamPreviewProps {
@@ -14,11 +15,11 @@ export interface StreamPreviewProps {
 
 /** Live-updating summary of what the configured stream will do, before submission. */
 export function StreamPreview({ amount, token, startDate, endDate, recipient }: StreamPreviewProps) {
-  const totalAmount = Number(amount);
   const durationSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
-  const hasValidInputs = Number.isFinite(totalAmount) && totalAmount > 0 && durationSeconds > 0 && token.symbol;
+  const amountCheck = checkAmount(amount, token.decimals);
+  const hasValidInputs = amountCheck.ok && durationSeconds > 0 && Boolean(token.symbol);
 
-  if (!hasValidInputs) {
+  if (!hasValidInputs || !amountCheck.ok) {
     return (
       <div className="card border-dashed text-sm text-muted">
         Fill in a recipient, amount, and schedule to see a live preview of the stream rate.
@@ -26,8 +27,8 @@ export function StreamPreview({ amount, token, startDate, endDate, recipient }: 
     );
   }
 
-  const ratePerSecond = totalAmount / durationSeconds;
-  const rate = formatRate(ratePerSecond, token.symbol);
+  const totalAmount = amountCheck.baseUnits;
+  const rate = formatRateFromBaseUnits(totalAmount, durationSeconds, token.symbol, token.decimals);
   const durationLabel = formatDistanceStrict(endDate, startDate);
 
   return (
@@ -41,7 +42,7 @@ export function StreamPreview({ amount, token, startDate, endDate, recipient }: 
       </div>
       <div className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
         <SummaryRow label="Recipient" value={recipient || "—"} mono />
-        <SummaryRow label="Total amount" value={`${totalAmount.toLocaleString()} ${token.symbol}`} />
+        <SummaryRow label="Total amount" value={formatBaseUnits(totalAmount, token.decimals, { grouped: true }) + ` ${token.symbol}`} />
         <SummaryRow label="Duration" value={durationLabel} />
       </div>
     </div>
