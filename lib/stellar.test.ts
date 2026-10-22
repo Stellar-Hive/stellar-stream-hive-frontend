@@ -21,6 +21,22 @@ describe("isValidStellarAddress", () => {
     expect(isValidRecipientAddress(typo)).toBe(false);
   });
 
+  it("rejects a lowercased address even though every character is still valid base32", () => {
+    const lowercasedAccount = ACCOUNT.toLowerCase();
+    const lowercasedContract = CONTRACT.toLowerCase();
+
+    expect(isValidStellarAddress(lowercasedAccount, "account")).toBe(false);
+    expect(isValidStellarAddress(lowercasedContract, "contract")).toBe(false);
+    expect(isValidStellarAddress(lowercasedAccount)).toBe(false);
+    expect(isValidRecipientAddress(lowercasedAccount)).toBe(false);
+  });
+
+  it("rejects wrong-prefix addresses: a contract C-address passed where an account is required, and vice versa", () => {
+    expect(isValidStellarAddress(CONTRACT, "account")).toBe(false);
+    expect(isValidRecipientAddress(CONTRACT)).toBe(false);
+    expect(isValidStellarAddress(ACCOUNT, "contract")).toBe(false);
+  });
+
   it("rejects a valid muxed M-address where a G-account address is required", () => {
     const muxedPayload = Uint8Array.from([
       ...StrKey.decodeEd25519PublicKey(ACCOUNT),
