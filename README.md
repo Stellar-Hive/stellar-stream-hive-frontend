@@ -102,6 +102,10 @@ See [`.env.example`](./.env.example) for the full, documented list. In short:
 - `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
   platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
   graceful empty/loading state rather than fabricating numbers.
+- `NEXT_PUBLIC_SITE_URL` — public base URL this app is deployed at, used for `metadataBase`
+  (Open Graph URLs) in `app/layout.tsx` and for the generated sitemap in `app/sitemap.ts`.
+  Defaults to `http://localhost:3000`; set it to your real deployment URL in production so
+  Open Graph previews and the sitemap don't point at a placeholder domain.
 
 ## Project structure
 
