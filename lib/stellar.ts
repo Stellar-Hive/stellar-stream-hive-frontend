@@ -17,9 +17,6 @@ export const NETWORK_PASSPHRASE =
 export const SOROBAN_RPC_URL =
   process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
 
-export const HORIZON_URL =
-  process.env.NEXT_PUBLIC_HORIZON_URL || "https://horizon-testnet.stellar.org";
-
 /**
  * Stellar Expert network slug for building explorer links. Stellar Expert
  * does not index Futurenet, so this is `null` in that case — callers must
