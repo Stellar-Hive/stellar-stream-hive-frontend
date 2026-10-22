@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatBaseUnits,
   formatRate,
+  formatRateFromBaseUnits,
   formatTokenAmount,
   formatUtcOffset,
   parseAmountToBaseUnits,
@@ -36,6 +37,18 @@ describe("parseAmountToBaseUnits", () => {
     expect(() => parseAmountToBaseUnits("")).toThrow("Invalid amount");
     expect(() => parseAmountToBaseUnits("abc")).toThrow("Invalid amount");
     expect(() => parseAmountToBaseUnits("-1")).toThrow("negative");
+  });
+
+  it("rejects hex, binary and octal literals", () => {
+    expect(() => parseAmountToBaseUnits("0x10")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("0b1")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("0o7")).toThrow("Invalid amount");
+  });
+
+  it("rejects exponential and non-finite numeric strings", () => {
+    expect(() => parseAmountToBaseUnits("1e3")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("Infinity")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("NaN")).toThrow("Invalid amount");
   });
 });
 
@@ -140,6 +153,15 @@ describe("explorer urls", () => {
       `https://stellar.expert/explorer/public/tx/${hash}`
     );
   });
+
+  it("returns null for account/contract URLs when network is null (e.g. Futurenet)", () => {
+    expect(stellarExpertAccountUrl("GABC", null)).toBeNull();
+    expect(stellarExpertAccountUrl("CABC", null)).toBeNull();
+  });
+
+  it("returns null for transaction URLs when network is null (e.g. Futurenet)", () => {
+    expect(stellarExpertTxUrl("abc123", null)).toBeNull();
+  });
 });
 
 describe("formatRate", () => {
@@ -152,6 +174,32 @@ describe("formatRate", () => {
   it("copes with zero and non-finite rates", () => {
     expect(formatRate(0, "XLM").perDay).toBe("0 XLM");
     expect(formatRate(Number.NaN, "XLM").perSecond).toBe("0 XLM");
+  });
+});
+
+describe("formatRateFromBaseUnits", () => {
+  it("computes exact per-second/hour/day rates for amounts above Number.MAX_SAFE_INTEGER", () => {
+    // 123456789012345678 exceeds Number.MAX_SAFE_INTEGER (9007199254740991), so
+    // Number(stream.totalAmount) would already have lost precision before any
+    // division happened. BigInt math keeps every digit exact.
+    const totalAmount = 123456789012345678n;
+    expect(totalAmount > BigInt(Number.MAX_SAFE_INTEGER)).toBe(true);
+
+    const rate = formatRateFromBaseUnits(totalAmount, 3, "XLM", 7);
+    expect(rate.perSecond).toBe("4,115,226,300.4115226 XLM");
+    expect(rate.perHour).toBe("14,814,814,681,481.48136 XLM");
+    expect(rate.perDay).toBe("355,555,552,355,555.55264 XLM");
+  });
+
+  it("floors sub-base-unit rates to zero rather than fabricating a fractional value", () => {
+    const rate = formatRateFromBaseUnits(1n, 1_000_000_000, "XLM", 7);
+    expect(rate.perSecond).toBe("0.00 XLM");
+  });
+
+  it("returns zero for a non-positive or non-finite duration", () => {
+    expect(formatRateFromBaseUnits(10_000_000n, 0, "XLM", 7).perSecond).toBe("0.00 XLM");
+    expect(formatRateFromBaseUnits(10_000_000n, Number.NaN, "XLM", 7).perSecond).toBe("0.00 XLM");
+    expect(formatRateFromBaseUnits(10_000_000n, -5, "XLM", 7).perSecond).toBe("0.00 XLM");
   });
 });
 

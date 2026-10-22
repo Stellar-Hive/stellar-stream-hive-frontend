@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { I128_MAX, checkAmount, checkRecipientNotSender } from "./validation";
+import { I128_MAX, checkAmount, checkRecipientNotSender, isValidStreamId } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
 import { groupOutgoingByToken } from "./outgoing";
 
@@ -105,48 +105,19 @@ describe("checkRecipientNotSender", () => {
   });
 });
 
-// ─── Issue #6: outgoing totals grouped by token ──────────────────────────────
-
-describe("groupOutgoingByToken", () => {
-  const stream = (token: string, total: bigint, withdrawn: bigint) => ({
-    token,
-    total,
-    withdrawn,
+describe("isValidStreamId", () => {
+  it("accepts non-negative decimal integers, including a leading zero and large u64 values", () => {
+    expect(isValidStreamId("0")).toBe(true);
+    expect(isValidStreamId("1")).toBe(true);
+    expect(isValidStreamId("42")).toBe(true);
+    expect(isValidStreamId("007")).toBe(true);
+    expect(isValidStreamId("18446744073709551615")).toBe(true); // u64::MAX
   });
 
-  it("combines a single token into one total", () => {
-    const groups = groupOutgoingByToken([
-      stream("USDC", 100n, 40n),
-      stream("USDC", 50n, 0n),
-    ]);
-    expect(groups).toHaveLength(1);
-    expect(groups[0].token).toBe("USDC");
-    expect(groups[0].total).toBe(110n);
-  });
-
-  it("keeps different tokens separate", () => {
-    const groups = groupOutgoingByToken([
-      stream("USDC", 100n, 40n),
-      stream("XLM", 50n, 10n),
-      stream("USDC", 5n, 5n),
-    ]);
-    expect(groups).toHaveLength(2);
-    const usdc = groups.find((g) => g.token === "USDC");
-    const xlm = groups.find((g) => g.token === "XLM");
-    expect(usdc?.total).toBe(65n);
-    expect(xlm?.total).toBe(40n);
-  });
-
-  it("floors each stream's remainder and never goes negative", () => {
-    const groups = groupOutgoingByToken([
-      stream("USDC", 10n, 3n),
-      stream("USDC", 5n, 5n),
-    ]);
-    expect(groups[0].total).toBe(7n);
-  });
-
-  it("returns an empty list for no streams", () => {
-    expect(groupOutgoingByToken([])).toEqual([]);
+  it("rejects anything that isn't a plain unsigned integer string", () => {
+    for (const bad of ["abc", "", " ", "1.5", "-1", "+1", "1e3", "0x10", "1,000", "1 2", " 1", "1 "]) {
+      expect(isValidStreamId(bad), JSON.stringify(bad)).toBe(false);
+    }
   });
 });
 

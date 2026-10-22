@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cancelStreamOnChain, fetchStreamOnChain, ContractNotConfiguredError } from "@/lib/contracts";
 import { fetchLatestLedgerSnapshot } from "@/lib/stellar";
-import { computeStreamedAmount } from "@/lib/streaming";
+import { computeCancelSplit, computeStreamedAmount } from "@/lib/streaming";
 import { describeFreighterError } from "@/lib/freighter";
 import { formatTokenAmount, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
@@ -99,20 +99,23 @@ export function CancelButton({
       const [stream, ledgerSnapshot] = await Promise.all([fetchStreamOnChain(streamId), fetchLatestLedgerSnapshot()]);
       if (!stream) throw new Error("Stream not found on-chain.");
 
+      const totalAmount = BigInt(stream.totalAmount);
       const streamedNow = computeStreamedAmount({
-        totalAmount: BigInt(stream.totalAmount),
+        totalAmount,
         startLedger: stream.startLedger,
         endLedger: stream.endLedger,
         currentLedger: ledgerSnapshot.ledger,
       });
 
-      const recipientGets = streamedNow - BigInt(stream.withdrawnAmount);
-      const senderGets = BigInt(stream.totalAmount) - streamedNow;
-
-      setSplit({
-        recipientGets: recipientGets > 0n ? recipientGets : 0n,
-        senderGets: senderGets > 0n ? senderGets : 0n,
-      });
+      setSplit(
+        computeCancelSplit({
+          totalAmount,
+          streamedAmount: streamedNow,
+          withdrawnAmount: BigInt(stream.withdrawnAmount),
+          cliffLedger: stream.cliffLedger,
+          currentLedger: ledgerSnapshot.ledger,
+        }),
+      );
       setStatus("confirming");
     } catch (err) {
       setError(err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err));
@@ -188,14 +191,21 @@ export function CancelButton({
         {status === "success" && txHash && (
           <div className="mb-4">
             <p className="mb-2 text-sm font-medium text-primary">Stream cancelled.</p>
-            <a
-              href={stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK)}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-accent underline"
-            >
-              View transaction on Stellar Expert
-            </a>
+            {(() => {
+              const explorerUrl = stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK);
+              return (
+                explorerUrl && (
+                  <a
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-accent underline"
+                  >
+                    View transaction on Stellar Expert
+                  </a>
+                )
+              );
+            })()}
           </div>
         )}
 

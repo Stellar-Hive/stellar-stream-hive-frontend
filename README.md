@@ -97,11 +97,14 @@ See [`.env.example`](./.env.example) for the full, documented list. In short:
   On any other network leave them blank and contract-calling features show a clear "not yet
   configured" state rather than failing silently.
 - `NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE`,
-  `NEXT_PUBLIC_SOROBAN_RPC_URL`, `NEXT_PUBLIC_HORIZON_URL` — network configuration, defaulted to
-  Stellar testnet.
+  `NEXT_PUBLIC_SOROBAN_RPC_URL` — network configuration, defaulted to Stellar testnet.
 - `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
   platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
   graceful empty/loading state rather than fabricating numbers.
+- `NEXT_PUBLIC_SITE_URL` — public base URL this app is deployed at, used for `metadataBase`
+  (Open Graph URLs) in `app/layout.tsx` and for the generated sitemap in `app/sitemap.ts`.
+  Defaults to `http://localhost:3000`; set it to your real deployment URL in production so
+  Open Graph previews and the sitemap don't point at a placeholder domain.
 
 ## Project structure
 
@@ -130,6 +133,11 @@ lib/
   streaming.ts                Client-side streamed-amount math (mirrors the contract)
   format.ts                   BigInt <-> decimal string formatting, address shortening
   api.ts                      Indexer API client
+  validation.ts               Input validation for addresses, amounts and form fields
+  tokens.ts                   Supported token list and token lookup helpers
+  tokenMetadata.ts            Token metadata (symbol, decimals) loading and caching
+  streamMapping.ts            Mapping indexer API and contract responses into `Stream`
+  streamList.ts               Status filters and CSV export for stream lists
 types/index.ts                 Shared domain types
 ```
 

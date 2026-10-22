@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AVERAGE_LEDGER_SECONDS,
+  computeCancelSplit,
   computeProgress,
   computeRatePerSecond,
   computeStreamedAmount,
@@ -97,6 +98,56 @@ describe("computeWithdrawable", () => {
     expect(computeWithdrawable({ ...p, currentLedger: cliffLedger })).toBe(500_000n);
     // one ledger after the cliff: accrual continues normally
     expect(computeWithdrawable({ ...p, currentLedger: cliffLedger + 1 })).toBe(510_000n);
+  });
+});
+
+describe("computeCancelSplit", () => {
+  it("pays the sender in full and the recipient nothing before the cliff", () => {
+    const p = { ...base, cliffLedger: 150 };
+    expect(computeCancelSplit({ ...p, currentLedger: 149 })).toEqual({
+      recipientGets: 0n,
+      senderGets: 1_000_000n,
+    });
+    // even at the start, before any accrual
+    expect(computeCancelSplit({ ...p, currentLedger: 0 })).toEqual({
+      recipientGets: 0n,
+      senderGets: 1_000_000n,
+    });
+  });
+
+  it("splits normally at and after the cliff", () => {
+    const p = { ...base, cliffLedger: 150 };
+    expect(computeCancelSplit({ ...p, currentLedger: 150 })).toEqual({
+      recipientGets: 500_000n,
+      senderGets: 500_000n,
+    });
+    expect(computeCancelSplit({ ...p, currentLedger: 175 })).toEqual({
+      recipientGets: 750_000n,
+      senderGets: 250_000n,
+    });
+    expect(computeCancelSplit({ ...p, currentLedger: 9_999 })).toEqual({
+      recipientGets: 1_000_000n,
+      senderGets: 0n,
+    });
+  });
+
+  it("splits normally for a stream with no cliff", () => {
+    expect(computeCancelSplit({ ...base, currentLedger: 125 })).toEqual({
+      recipientGets: 250_000n,
+      senderGets: 750_000n,
+    });
+    expect(computeCancelSplit({ ...base, currentLedger: 150 })).toEqual({
+      recipientGets: 500_000n,
+      senderGets: 500_000n,
+    });
+  });
+
+  it("floors the recipient share so the split never exceeds the total", () => {
+    const p = { totalAmount: 10n, startLedger: 0, endLedger: 3, cliffLedger: 0 };
+    const split = computeCancelSplit({ ...p, currentLedger: 1 });
+    expect(split.recipientGets).toBe(3n);
+    expect(split.senderGets).toBe(7n);
+    expect(split.recipientGets + split.senderGets).toBe(10n);
   });
 });
 
