@@ -13,7 +13,7 @@ import { dateToEstimatedLedger } from "@/lib/streaming";
 import { checkAmount, checkRecipientNotSender } from "@/lib/validation";
 import { createStreamOnChain, isStreamContractConfigured, ContractNotConfiguredError } from "@/lib/contracts";
 import { describeFreighterError } from "@/lib/freighter";
-import { parseAmountToBaseUnits, stellarExpertTxUrl } from "@/lib/format";
+import { stellarExpertTxUrl } from "@/lib/format";
 import type { TokenInfo } from "@/types";
 import { ONE_DAY_MS } from "@/lib/constants";
 
