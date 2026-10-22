@@ -20,6 +20,7 @@ import {
 } from "@/lib/streamList";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { formatTokenAmount } from "@/lib/format";
+import { groupOutgoingByToken } from "@/lib/outgoingTotals";
 
 export default function SendingPage() {
   const wallet = useWallet();
@@ -46,9 +47,8 @@ export default function SendingPage() {
   }
 
   const activeStreams = streams.filter((s) => s.status === "active" || s.status === "cliff" || s.status === "scheduled");
-  const totalOutgoing = activeStreams.reduce((sum, s) => sum + BigInt(s.totalAmount) - BigInt(s.withdrawnAmount), 0n);
-  const commonSymbol = activeStreams[0]?.token.symbol ?? "XLM";
-  const commonDecimals = activeStreams[0]?.token.decimals ?? 7;
+  const outgoingByToken = groupOutgoingByToken(activeStreams);
+  const hasSingleToken = outgoingByToken.length === 1;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -59,12 +59,45 @@ export default function SendingPage() {
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <RefreshButton onRefresh={refetch} isLoading={isLoading} />
-          {activeStreams.length > 0 && (
+          {isLoading ? (
+            <div className="card px-5 py-3 text-right" aria-busy="true">
+              <p className="text-xs text-muted">Total outgoing commitment</p>
+              <div className="mt-1 flex justify-end">
+                <Spinner />
+              </div>
+            </div>
+          ) : error ? (
+            <div className="card px-5 py-3 text-right">
+              <p className="text-xs text-muted">Total outgoing commitment</p>
+              <p className="text-sm text-muted">Unavailable</p>
+            </div>
+          ) : outgoingByToken.length === 0 ? (
+            <div className="card px-5 py-3 text-right">
+              <p className="text-xs text-muted">Total outgoing commitment</p>
+              <p className="text-sm text-muted">No live streams</p>
+            </div>
+          ) : hasSingleToken ? (
             <div className="card px-5 py-3 text-right">
               <p className="text-xs text-muted">Total outgoing commitment</p>
               <p className="mono-tabular text-xl font-bold text-primary">
-                {formatTokenAmount(totalOutgoing, commonSymbol, commonDecimals, 4)}
+                {formatTokenAmount(
+                  outgoingByToken[0].amount,
+                  outgoingByToken[0].symbol,
+                  outgoingByToken[0].decimals,
+                  4
+                )}
               </p>
+            </div>
+          ) : (
+            <div className="card px-5 py-3 text-right">
+              <p className="text-xs text-muted">Total outgoing commitment (per token)</p>
+              <ul className="mt-1 space-y-0.5">
+                {outgoingByToken.map((group) => (
+                  <li key={group.contractId} className="mono-tabular text-sm font-bold text-primary">
+                    {formatTokenAmount(group.amount, group.symbol, group.decimals, 4)}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

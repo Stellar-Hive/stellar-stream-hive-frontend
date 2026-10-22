@@ -9,6 +9,56 @@ import { getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./s
 import { createTokenMetadataCache, enrichStreamTokens, type RawTokenMetadata } from "./tokenMetadata";
 import type { Stream, TokenInfo } from "@/types";
 
+/** Per-token outgoing commitment: `totalAmount - withdrawnAmount`, summed as BigInt. */
+export interface OutgoingTokenTotal {
+  contractId: string;
+  symbol: string;
+  decimals: number;
+  /** Sum of `totalAmount - withdrawnAmount` over the live streams for this token. */
+  amount: bigint;
+}
+
+export interface OutgoingSummary {
+  /** One entry per distinct token contract id, in first-seen order. */
+  totals: OutgoingTokenTotal[];
+  /** True when every live stream uses the same token (or there are none). */
+  singleToken: boolean;
+}
+
+/**
+ * Groups live streams by token contract id and sums their outstanding amount
+ * (`totalAmount - withdrawnAmount`) as BigInt. Streams whose token metadata is
+ * unknown are skipped rather than guessed at.
+ */
+export function summarizeOutgoingByToken(
+  streams: Stream[],
+  getInfo: (contractId: string) => TokenInfo,
+): OutgoingSummary {
+  const byToken = new Map<string, OutgoingTokenTotal>();
+
+  for (const stream of streams) {
+    if (!stream.isActive) continue;
+    const info = getInfo(stream.tokenContractId);
+    if (!info) continue;
+
+    const outstanding = stream.totalAmount - stream.withdrawnAmount;
+    const existing = byToken.get(stream.tokenContractId);
+    if (existing) {
+      existing.amount += outstanding;
+    } else {
+      byToken.set(stream.tokenContractId, {
+        contractId: stream.tokenContractId,
+        symbol: info.symbol,
+        decimals: info.decimals,
+        amount: outstanding,
+      });
+    }
+  }
+
+  const totals = [...byToken.values()];
+  return { totals, singleToken: totals.length <= 1 };
+}
+
 async function simulateRead(contractId: string, method: "symbol" | "decimals"): Promise<unknown> {
   // Simulation needs a source account but never submits, so a throwaway keypair is fine.
   const account = new Account(Keypair.random().publicKey(), "0");

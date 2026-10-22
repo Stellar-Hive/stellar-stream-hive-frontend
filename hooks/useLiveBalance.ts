@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
+import { useEffect, useState } from "react";
+import type { LedgerSnapshot } from "@/lib/stellar";
 import { computeProgress, computeWithdrawable, computeStreamedAmount, estimateCurrentLedger } from "@/lib/streaming";
 import type { LiveBalanceState } from "@/types";
-import { RESYNC_MS, TICK_MS } from "@/lib/constants";
+import { TICK_MS } from "@/lib/constants";
+import { useLedgerSnapshot } from "@/hooks/useLedgerSnapshot";
 
 export interface UseLiveBalanceParams {
   totalAmount: bigint;
@@ -36,47 +37,14 @@ export function useLiveBalance(params: UseLiveBalanceParams): LiveBalanceState {
   const { totalAmount, withdrawnAmount, startLedger, endLedger, cliffLedger, simulatedReference, enabled = true } =
     params;
 
-  const [reference, setReference] = useState<LedgerSnapshot | null>(simulatedReference ?? null);
-  const [isLoading, setIsLoading] = useState(!simulatedReference);
-  const [error, setError] = useState<string | null>(null);
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(simulatedReference ? Date.now() : null);
   const [, setTick] = useState(0);
 
-  const isSimulated = !!simulatedReference;
-  const mountedRef = useRef(true);
-
-  // Initial fetch + periodic re-sync from chain (skipped entirely in simulated mode).
-  useEffect(() => {
-    mountedRef.current = true;
-    if (isSimulated || !enabled) {
-      setIsLoading(false);
-      return () => {
-        mountedRef.current = false;
-      };
-    }
-
-    async function sync() {
-      try {
-        const snapshot = await fetchLatestLedgerSnapshot();
-        if (!mountedRef.current) return;
-        setReference(snapshot);
-        setLastSyncedAt(Date.now());
-        setError(null);
-      } catch (err) {
-        if (!mountedRef.current) return;
-        setError(err instanceof Error ? err.message : "Failed to sync with the Stellar network.");
-      } finally {
-        if (mountedRef.current) setIsLoading(false);
-      }
-    }
-
-    sync();
-    const resyncInterval = setInterval(sync, RESYNC_MS);
-    return () => {
-      mountedRef.current = false;
-      clearInterval(resyncInterval);
-    };
-  }, [isSimulated, enabled]);
+  // Shared ledger snapshot: one fetch + 30s re-sync per page, regardless of
+  // how many components consume it. In simulated mode the fixed reference is
+  // used and no chain fetch happens. When `enabled` is false we still want the
+  // initial snapshot so completed/cancelled streams report their real
+  // remaining balance instead of a placeholder zero.
+  const { snapshot, isLoading, error, lastSyncedAt } = useLedgerSnapshot({ simulatedReference });
 
   // Per-second UI tick. Purely forces a re-render so the derived values below
   // recompute against the current wall-clock time.
@@ -86,20 +54,20 @@ export function useLiveBalance(params: UseLiveBalanceParams): LiveBalanceState {
     return () => clearInterval(interval);
   }, [enabled]);
 
-  if (!reference) {
+  if (!snapshot) {
     return {
       withdrawable: 0n,
       streamed: 0n,
       progress: 0,
-      isLoading,
+      isLoading: isLoading || !error,
       error,
       lastSyncedAt,
     };
   }
 
   const currentLedger = enabled
-    ? estimateCurrentLedger({ lastKnownLedger: reference.ledger, lastKnownLedgerTimestampMs: reference.timestampMs })
-    : reference.ledger;
+    ? estimateCurrentLedger({ lastKnownLedger: snapshot.ledger, lastKnownLedgerTimestampMs: snapshot.timestampMs })
+    : snapshot.ledger;
 
   const streamed = computeStreamedAmount({ totalAmount, startLedger, endLedger, currentLedger });
   const withdrawable = computeWithdrawable({

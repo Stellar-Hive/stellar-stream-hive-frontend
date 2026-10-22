@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { I128_MAX, checkAmount, checkRecipientNotSender, isValidStreamId } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
+import { groupOutgoingByToken } from "./outgoing";
 
 const base = (input: string, decimals = 7) => {
   const r = checkAmount(input, decimals);
@@ -63,6 +64,29 @@ describe("checkAmount", () => {
   it("agrees with parseAmountToBaseUnits wherever the latter is exact", () => {
     for (const v of ["1", "0.5", "1000000.1234567", "0.0000001"]) {
       expect(base(v)).toBe(parseAmountToBaseUnits(v));
+    }
+  });
+});
+
+describe("checkAmount — invalid decimals", () => {
+  it("returns an error result instead of throwing for non-integer decimals", () => {
+    expect(() => checkAmount("1", 1.5)).not.toThrow();
+    const r = checkAmount("1", 1.5);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("returns an error result instead of throwing for negative decimals", () => {
+    expect(() => checkAmount("1", -1)).not.toThrow();
+    const r = checkAmount("1", -1);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("rejects NaN and non-finite decimals", () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const r = checkAmount("1", bad);
+      expect(r.ok, String(bad)).toBe(false);
     }
   });
 });

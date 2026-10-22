@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
+import { useEffect, useState } from "react";
+import type { LedgerSnapshot } from "@/lib/stellar";
 import { estimateCurrentLedger } from "@/lib/streaming";
+import { useLedgerSnapshot } from "@/hooks/useLedgerSnapshot";
 import { format } from "date-fns";
-import { RESYNC_MS, TICK_MS } from "@/lib/constants";
+import { TICK_MS } from "@/lib/constants";
 
 export interface StreamTimelineProps {
   startLedger: number;
@@ -28,33 +29,9 @@ export function StreamTimeline({
   simulatedReference,
   enabled = true,
 }: StreamTimelineProps) {
-  const [reference, setReference] = useState<LedgerSnapshot | null>(simulatedReference ?? null);
+  const sharedReference = useLedgerSnapshot({ enabled: enabled && !simulatedReference });
+  const reference: LedgerSnapshot | null = simulatedReference ?? sharedReference;
   const [, setTick] = useState(0);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    if (simulatedReference || !enabled) return () => void (mountedRef.current = false);
-
-    let interval: ReturnType<typeof setInterval> | undefined;
-    fetchLatestLedgerSnapshot()
-      .then((snap) => {
-        if (mountedRef.current) setReference(snap);
-      })
-      .catch(() => undefined);
-    interval = setInterval(() => {
-      fetchLatestLedgerSnapshot()
-        .then((snap) => {
-          if (mountedRef.current) setReference(snap);
-        })
-        .catch(() => undefined);
-    }, RESYNC_MS);
-
-    return () => {
-      mountedRef.current = false;
-      if (interval) clearInterval(interval);
-    };
-  }, [simulatedReference, enabled]);
 
   useEffect(() => {
     if (!enabled) return;
