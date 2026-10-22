@@ -37,6 +37,18 @@ describe("parseAmountToBaseUnits", () => {
     expect(() => parseAmountToBaseUnits("abc")).toThrow("Invalid amount");
     expect(() => parseAmountToBaseUnits("-1")).toThrow("negative");
   });
+
+  it("rejects hex, binary and octal literals", () => {
+    expect(() => parseAmountToBaseUnits("0x10")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("0b1")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("0o7")).toThrow("Invalid amount");
+  });
+
+  it("rejects exponential and non-finite numeric strings", () => {
+    expect(() => parseAmountToBaseUnits("1e3")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("Infinity")).toThrow("Invalid amount");
+    expect(() => parseAmountToBaseUnits("NaN")).toThrow("Invalid amount");
+  });
 });
 
 describe("formatBaseUnits", () => {

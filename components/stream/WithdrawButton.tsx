@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { fetchWithdrawableOnChain, withdrawOnChain, ContractNotConfiguredError } from "@/lib/contracts";
 import { describeFreighterError } from "@/lib/freighter";
-import { formatBaseUnits, parseAmountToBaseUnits, stellarExpertTxUrl } from "@/lib/format";
+import { formatBaseUnits, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { checkAmount } from "@/lib/validation";
 import { Spinner } from "@/components/ui/Spinner";
 
 type Status = "idle" | "checking" | "signing" | "submitting" | "success" | "error";
@@ -51,7 +52,9 @@ export function WithdrawButton({
 
       let amount = actualWithdrawable;
       if (useCustom) {
-        const requested = parseAmountToBaseUnits(customAmount, tokenDecimals);
+        const result = checkAmount(customAmount, tokenDecimals);
+        if (!result.ok) throw new Error(result.reason);
+        const requested = result.baseUnits;
         if (requested <= 0n) throw new Error("Enter an amount greater than zero.");
         if (requested > actualWithdrawable) {
           throw new Error(
