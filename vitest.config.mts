@@ -9,5 +9,11 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts", "hooks/**/*.test.ts", "components/**/*.test.tsx"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      include: ["lib/**/*.ts", "hooks/**/*.ts"],
+      exclude: ["lib/**/*.test.ts", "hooks/**/*.test.ts", "lib/testing/**"],
+    },
   },
 });
