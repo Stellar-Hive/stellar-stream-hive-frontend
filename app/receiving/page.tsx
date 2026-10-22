@@ -21,6 +21,14 @@ import {
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { fetchWithdrawableOnChain, withdrawOnChain, ContractNotConfiguredError } from "@/lib/contracts";
 import { describeFreighterError } from "@/lib/freighter";
+import { stellarExpertTxUrl } from "@/lib/format";
+import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+
+interface WithdrawAllResult {
+  streamId: string;
+  hash: string | null;
+  error: string | null;
+}
 
 export default function ReceivingPage() {
   const wallet = useWallet();
@@ -34,7 +42,7 @@ export default function ReceivingPage() {
     [streams, filter, query, sort]
   );
   const [withdrawAllStatus, setWithdrawAllStatus] = useState<"idle" | "running" | "done">("idle");
-  const [withdrawAllError, setWithdrawAllError] = useState<string | null>(null);
+  const [withdrawAllResults, setWithdrawAllResults] = useState<WithdrawAllResult[]>([]);
 
   if (!wallet.isConnected) {
     return (
@@ -48,24 +56,34 @@ export default function ReceivingPage() {
     );
   }
 
-  const withdrawableStreams = streams.filter((s) => s.status === "active" || s.status === "cliff");
+  // Completed streams may still hold an unclaimed remainder, and a cancelled
+  // stream's frozen share can also be unclaimed; both are still withdrawable
+  // on-chain even though streaming itself has stopped. The on-chain re-check
+  // below (fetchWithdrawableOnChain) naturally skips any stream with nothing
+  // left to withdraw.
+  const withdrawableStreams = streams.filter(
+    (s) => s.status === "active" || s.status === "cliff" || s.status === "completed" || s.status === "cancelled"
+  );
 
   async function handleWithdrawAll() {
     setWithdrawAllStatus("running");
-    setWithdrawAllError(null);
-    try {
-      for (const stream of withdrawableStreams) {
+    setWithdrawAllResults([]);
+    const results: WithdrawAllResult[] = [];
+    for (const stream of withdrawableStreams) {
+      try {
         const amount = await fetchWithdrawableOnChain(stream.id);
         if (amount > 0n && wallet.publicKey) {
-          await withdrawOnChain({ streamId: stream.id, recipient: wallet.publicKey, amount });
+          const { hash } = await withdrawOnChain({ streamId: stream.id, recipient: wallet.publicKey, amount });
+          results.push({ streamId: stream.id, hash, error: null });
         }
+      } catch (err) {
+        const message = err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err);
+        results.push({ streamId: stream.id, hash: null, error: message });
       }
-      setWithdrawAllStatus("done");
-      await refetch();
-    } catch (err) {
-      setWithdrawAllError(err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err));
-      setWithdrawAllStatus("idle");
     }
+    setWithdrawAllResults(results);
+    setWithdrawAllStatus("done");
+    await refetch();
   }
 
   return (
@@ -99,9 +117,36 @@ export default function ReceivingPage() {
         </div>
       </div>
 
-      {withdrawAllError && <p className="mb-4 text-sm text-danger">{withdrawAllError}</p>}
       {withdrawAllStatus === "done" && (
-        <p className="mb-4 text-sm text-primary">Withdrawal requests submitted for all eligible streams.</p>
+        <div className="mb-4 rounded-xl border border-border bg-background/50 px-4 py-3 text-sm">
+          <p className="mb-2 font-medium text-primary">
+            Withdraw All results ({withdrawAllResults.filter((r) => r.hash).length} succeeded,{" "}
+            {withdrawAllResults.filter((r) => r.error).length} failed)
+          </p>
+          {withdrawAllResults.length === 0 ? (
+            <p className="text-muted">Nothing was withdrawable.</p>
+          ) : (
+            <ul className="space-y-1">
+              {withdrawAllResults.map((r) => (
+                <li key={r.streamId} className="flex items-center justify-between gap-3">
+                  <span className="text-muted">Stream #{r.streamId}</span>
+                  {r.hash ? (
+                    <a
+                      href={stellarExpertTxUrl(r.hash, STELLAR_EXPERT_NETWORK)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent underline"
+                    >
+                      View transaction
+                    </a>
+                  ) : (
+                    <span className="text-danger">{r.error}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {!apiConfigured && (
