@@ -59,18 +59,27 @@ export function TotalWithdrawable({ streams }: TotalWithdrawableProps) {
   });
 
   const total = streams.reduce((sum, s) => {
-    if (s.status !== "active" && s.status !== "cliff") return sum;
-    return (
-      sum +
-      computeWithdrawable({
-        totalAmount: BigInt(s.totalAmount),
-        withdrawnAmount: BigInt(s.withdrawnAmount),
-        startLedger: s.startLedger,
-        endLedger: s.endLedger,
-        cliffLedger: s.cliffLedger,
-        currentLedger,
-      })
-    );
+    if (s.status === "active" || s.status === "cliff") {
+      return (
+        sum +
+        computeWithdrawable({
+          totalAmount: BigInt(s.totalAmount),
+          withdrawnAmount: BigInt(s.withdrawnAmount),
+          startLedger: s.startLedger,
+          endLedger: s.endLedger,
+          cliffLedger: s.cliffLedger,
+          currentLedger,
+        })
+      );
+    }
+    // Completed streams (fully vested) and cancelled streams (the frozen
+    // share settled at cancellation) no longer accrue live, so their
+    // withdrawable amount is simply whatever hasn't been withdrawn yet —
+    // no ledger-based calculation needed.
+    if (s.status === "completed" || s.status === "cancelled") {
+      return sum + (BigInt(s.totalAmount) - BigInt(s.withdrawnAmount));
+    }
+    return sum;
   }, 0n);
 
   return (

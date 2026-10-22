@@ -15,7 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  formatRate,
+  formatRateFromBaseUnits,
   formatTokenAmount,
   shortenAddress,
   stellarExpertAccountUrl,
@@ -62,18 +62,29 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   const isCancellable =
     stream.cancellable &&
     (stream.status === "active" || stream.status === "cliff" || stream.status === "scheduled");
-  const totalTokens = Number(stream.totalAmount) / 10 ** stream.token.decimals;
   const totalSeconds = (stream.endLedger - stream.startLedger) * AVERAGE_LEDGER_SECONDS;
-  const ratePerSecond = totalSeconds > 0 ? totalTokens / totalSeconds : 0;
-  const rate = formatRate(ratePerSecond, stream.token.symbol);
+  const rate = formatRateFromBaseUnits(
+    BigInt(stream.totalAmount),
+    totalSeconds,
+    stream.token.symbol,
+    stream.token.decimals
+  );
   const contractConfigured = isStreamContractConfigured();
   const contractId = contractConfigured ? getStreamContractId() : null;
+
+  // The connected wallet determines where "Back" should return the user to:
+  // the Sending list if they're the sender, Receiving if they're the
+  // recipient, otherwise fall back to the home page.
+  const isSender = wallet.publicKey != null && wallet.publicKey === stream.sender;
+  const isRecipient = wallet.publicKey != null && wallet.publicKey === stream.recipient;
+  const backHref = isSender ? "/sending" : isRecipient ? "/receiving" : "/";
+  const backLabel = isSender ? "Back to sending" : isRecipient ? "Back to receiving" : "Back home";
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-muted hover:text-white">
-          ← Back home
+        <Link href={backHref} className="text-sm text-muted hover:text-white">
+          ← {backLabel}
         </Link>
         <div className="flex items-center gap-3">
           <CopyButton
@@ -151,11 +162,11 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
           <DetailRow label="End" value={format(stream.endTime, "PPpp")} />
           {stream.cliffTime && <DetailRow label="Cliff" value={format(stream.cliffTime, "PPpp")} />}
           <DetailRow label="Cancellable" value={stream.cancellable ? "Yes" : "No"} />
-          {contractId && (
+          {contractId && stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK) && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-muted">Stream contract</span>
               <a
-                href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)}
+                href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
                 rel="noreferrer"
                 className="text-accent underline"
@@ -165,11 +176,11 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
               </a>
             </div>
           )}
-          {stream.createTxHash && (
+          {stream.createTxHash && stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK) && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-muted">Create tx</span>
               <a
-                href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)}
+                href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
                 rel="noreferrer"
                 className="text-accent underline"
@@ -214,15 +225,22 @@ function AddressRow({ label, address }: { label: string; address: string }) {
     <div className="mb-2 flex items-center justify-between text-sm last:mb-0">
       <span className="text-muted">{label}</span>
       <div className="flex items-center gap-1">
-        <a
-          href={stellarExpertAccountUrl(address, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-accent underline"
-        >
-          {shortenAddress(address)}
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
+        {(() => {
+          const explorerUrl = stellarExpertAccountUrl(address, STELLAR_EXPERT_NETWORK);
+          return explorerUrl ? (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent underline"
+            >
+              {shortenAddress(address)}
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          ) : (
+            <span>{shortenAddress(address)}</span>
+          );
+        })()}
         <CopyButton value={address} label="Copy address" />
       </div>
     </div>

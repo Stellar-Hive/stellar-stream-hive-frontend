@@ -92,14 +92,24 @@ export function shortenAddress(address: string, lead: number = 4, trail: number 
   return `${address.slice(0, lead)}…${address.slice(-trail)}`;
 }
 
-/** Builds a Stellar Expert explorer URL for an account or contract address. */
-export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for an account or contract address.
+ * Returns `null` when `network` is `null` (e.g. Futurenet, which Stellar
+ * Expert does not index) so callers can hide the link instead of pointing
+ * at the wrong network.
+ */
+export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" | null = "testnet"): string | null {
+  if (network === null) return null;
   const kind = address.startsWith("C") ? "contract" : "account";
   return `https://stellar.expert/explorer/${network}/${kind}/${address}`;
 }
 
-/** Builds a Stellar Expert explorer URL for a transaction hash. */
-export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for a transaction hash. Returns
+ * `null` when `network` is `null` (see {@link stellarExpertAccountUrl}).
+ */
+export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" | null = "testnet"): string | null {
+  if (network === null) return null;
   return `https://stellar.expert/explorer/${network}/tx/${hash}`;
 }
 
@@ -115,6 +125,41 @@ export function formatRate(amountPerSecond: number, symbol: string): { perSecond
     perSecond: `${fmt(amountPerSecond)} ${symbol}`,
     perHour: `${fmt(amountPerSecond * 3600)} ${symbol}`,
     perDay: `${fmt(amountPerSecond * 86400)} ${symbol}`,
+  };
+}
+
+/**
+ * Computes per-second/hour/day streaming rates from a base-unit (BigInt) total
+ * amount and a duration in seconds, entirely in BigInt arithmetic so large
+ * amounts never pass through a JS `number` (which loses precision above
+ * `Number.MAX_SAFE_INTEGER`). Each rate is floored to the token's base unit,
+ * never rounded up — a true rate smaller than one base unit per second will
+ * correctly display as "0" rather than a fabricated fractional value.
+ */
+export function formatRateFromBaseUnits(
+  totalAmount: bigint,
+  totalSeconds: number,
+  symbol: string,
+  decimals: number = STROOP_DECIMALS
+): { perSecond: string; perHour: string; perDay: string } {
+  const zero = {
+    perSecond: formatTokenAmount(0n, symbol, decimals, decimals),
+    perHour: formatTokenAmount(0n, symbol, decimals, decimals),
+    perDay: formatTokenAmount(0n, symbol, decimals, decimals),
+  };
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return zero;
+
+  const secondsBig = BigInt(Math.floor(totalSeconds));
+  if (secondsBig <= 0n) return zero;
+
+  const perSecond = totalAmount / secondsBig;
+  const perHour = (totalAmount * 3600n) / secondsBig;
+  const perDay = (totalAmount * 86400n) / secondsBig;
+
+  return {
+    perSecond: formatTokenAmount(perSecond, symbol, decimals, decimals),
+    perHour: formatTokenAmount(perHour, symbol, decimals, decimals),
+    perDay: formatTokenAmount(perDay, symbol, decimals, decimals),
   };
 }
 
