@@ -1,5 +1,6 @@
 "use client";
 
+import { useLedgerSnapshot } from "@/hooks/useLedgerSnapshot";
 import { useLiveBalance } from "@/hooks/useLiveBalance";
 import { formatTokenAmount } from "@/lib/format";
 import type { LedgerSnapshot } from "@/lib/stellar";
@@ -31,15 +32,42 @@ export function StreamProgress({
   const total = BigInt(totalAmount);
   const withdrawn = BigInt(withdrawnAmount);
 
+  // Share a single ledger snapshot across the stream detail page instead of
+  // letting each component poll `getLatestLedger` on its own.
+  const { reference, status } = useLedgerSnapshot({ simulatedReference, enabled });
+
   const state = useLiveBalance({
     totalAmount: total,
     withdrawnAmount: withdrawn,
     startLedger,
     endLedger,
     cliffLedger,
-    simulatedReference,
+    reference,
     enabled,
   });
+
+  if (!reference) {
+    return (
+      <div>
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="text-muted">Progress</span>
+          <span className="mono-tabular font-medium">—</span>
+        </div>
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={0}
+          aria-label="Stream progress"
+          aria-busy={status === "loading"}
+          className="h-2 w-full overflow-hidden rounded-full bg-border"
+        />
+        <div className="mt-4 text-sm text-muted">
+          {status === "error" ? "Unable to load ledger data." : "Loading stream progress…"}
+        </div>
+      </div>
+    );
+  }
 
   const remaining = total - state.streamed;
   const percent = Math.min(100, Math.max(0, state.progress * 100));

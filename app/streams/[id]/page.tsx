@@ -24,6 +24,7 @@ import {
 import { getStreamContractId, isStreamContractConfigured } from "@/lib/contracts";
 import { AVERAGE_LEDGER_SECONDS } from "@/lib/streaming";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { LedgerSnapshotProvider } from "@/hooks/useLedgerSnapshot";
 
 export default function StreamDetailPage({ params }: { params: { id: string } }) {
   const { stream, isLoading, error, notConfigured, refetch } = useStream(params.id);
@@ -70,6 +71,7 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   const contractId = contractConfigured ? getStreamContractId() : null;
 
   return (
+    <LedgerSnapshotProvider enabled={isActive}>
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/" className="text-sm text-muted hover:text-white">
@@ -206,6 +208,7 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
         <p className="mt-4 text-sm text-muted">Connect your wallet to withdraw or manage this stream.</p>
       )}
     </div>
+    </LedgerSnapshotProvider>
   );
 }
 

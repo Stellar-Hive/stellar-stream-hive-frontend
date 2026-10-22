@@ -6,6 +6,7 @@ import { computeProgress } from "@/lib/streaming";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
 import { LiveBalance } from "@/components/stream/LiveBalance";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { useLiveBalance } from "@/hooks/useLiveBalance";
 
 export interface StreamCardProps {
   stream: Stream;
@@ -20,6 +21,15 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
   const counterpartAddress = role === "sender" ? stream.recipient : stream.sender;
   const isLive = stream.status === "active" || stream.status === "cliff";
   const progress = computeProgress(stream.startLedger, stream.endLedger);
+
+  const liveBalance = useLiveBalance({
+    totalAmount: stream.totalAmount,
+    withdrawnAmount: stream.withdrawnAmount,
+    startLedger: stream.startLedger,
+    endLedger: stream.endLedger,
+    cliffLedger: stream.cliffLedger,
+    enabled: isLive,
+  });
 
   const endDate = stream.endTime ? new Date(stream.endTime) : null;
   const hasValidEndDate = endDate !== null && !Number.isNaN(endDate.getTime());
@@ -51,18 +61,27 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
       ) : null}
 
       {role === "recipient" ? (
-        <LiveBalance
-          totalAmount={stream.totalAmount}
-          withdrawnAmount={stream.withdrawnAmount}
-          startLedger={stream.startLedger}
-          endLedger={stream.endLedger}
-          cliffLedger={stream.cliffLedger}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          enabled={isLive}
-          size="sm"
-          label="Withdrawable"
-        />
+        liveBalance.isLoading ? (
+          <div>
+            <p className="text-xs text-muted">Withdrawable</p>
+            <p className="mono-tabular text-xl font-semibold text-muted" aria-busy="true">
+              Loading…
+            </p>
+          </div>
+        ) : (
+          <LiveBalance
+            totalAmount={stream.totalAmount}
+            withdrawnAmount={stream.withdrawnAmount}
+            startLedger={stream.startLedger}
+            endLedger={stream.endLedger}
+            cliffLedger={stream.cliffLedger}
+            tokenSymbol={stream.token.symbol}
+            tokenDecimals={stream.token.decimals}
+            enabled={isLive}
+            size="sm"
+            label="Withdrawable"
+          />
+        )
       ) : (
         <div>
           <p className="text-xs text-muted">Total commitment</p>

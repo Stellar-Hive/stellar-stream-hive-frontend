@@ -23,6 +23,14 @@ const XLM_TOKEN: TokenInfo = { contractId: nativeTokenContractId(), symbol: "XLM
 export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLookupChange }: AmountInputProps) {
   const isCustomToken = token.contractId !== XLM_TOKEN.contractId;
   const [detection, setDetection] = useState<Detection>("idle");
+  // Raw text for the decimals field so it can be cleared while typing; the
+  // stored token.decimals is always an integer.
+  const [decimalsText, setDecimalsText] = useState(String(token.decimals));
+
+  // Keep the text in sync when decimals change from outside (e.g. detection).
+  useEffect(() => {
+    setDecimalsText(String(token.decimals));
+  }, [token.decimals]);
 
   // Keep the latest callbacks in refs so the lookup effect depends only on the contract id.
   const onTokenChangeRef = useRef(onTokenChange);
@@ -160,9 +168,18 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
               type="number"
               min={0}
               max={18}
-              value={token.decimals}
+              step={1}
+              value={decimalsText}
               readOnly={detected}
-              onChange={(e) => onTokenChange({ ...token, decimals: Math.min(18, Math.max(0, Number(e.target.value))) })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setDecimalsText(raw);
+                const parsed = Number(raw);
+                if (raw.trim() === "" || !Number.isFinite(parsed)) return;
+                const decimals = Math.min(18, Math.max(0, Math.trunc(parsed)));
+                if (decimals !== token.decimals) onTokenChange({ ...token, decimals });
+              }}
+              onBlur={() => setDecimalsText(String(token.decimals))}
               className="input-field"
             />
           </div>

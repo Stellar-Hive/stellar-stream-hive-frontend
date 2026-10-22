@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { I128_MAX, checkAmount, checkRecipientNotSender } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
+import { groupOutgoingByToken } from "./outgoing";
 
 const base = (input: string, decimals = 7) => {
   const r = checkAmount(input, decimals);
@@ -67,6 +68,29 @@ describe("checkAmount", () => {
   });
 });
 
+describe("checkAmount — invalid decimals", () => {
+  it("returns an error result instead of throwing for non-integer decimals", () => {
+    expect(() => checkAmount("1", 1.5)).not.toThrow();
+    const r = checkAmount("1", 1.5);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("returns an error result instead of throwing for negative decimals", () => {
+    expect(() => checkAmount("1", -1)).not.toThrow();
+    const r = checkAmount("1", -1);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("rejects NaN and non-finite decimals", () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const r = checkAmount("1", bad);
+      expect(r.ok, String(bad)).toBe(false);
+    }
+  });
+});
+
 describe("checkRecipientNotSender", () => {
   it("blocks streaming to your own address", () => {
     expect(checkRecipientNotSender("GABC", "GABC")).toEqual({
@@ -78,6 +102,51 @@ describe("checkRecipientNotSender", () => {
     expect(checkRecipientNotSender("GOTHER", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("GABC", null)).toEqual({ ok: true });
+  });
+});
+
+// ─── Issue #6: outgoing totals grouped by token ──────────────────────────────
+
+describe("groupOutgoingByToken", () => {
+  const stream = (token: string, total: bigint, withdrawn: bigint) => ({
+    token,
+    total,
+    withdrawn,
+  });
+
+  it("combines a single token into one total", () => {
+    const groups = groupOutgoingByToken([
+      stream("USDC", 100n, 40n),
+      stream("USDC", 50n, 0n),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].token).toBe("USDC");
+    expect(groups[0].total).toBe(110n);
+  });
+
+  it("keeps different tokens separate", () => {
+    const groups = groupOutgoingByToken([
+      stream("USDC", 100n, 40n),
+      stream("XLM", 50n, 10n),
+      stream("USDC", 5n, 5n),
+    ]);
+    expect(groups).toHaveLength(2);
+    const usdc = groups.find((g) => g.token === "USDC");
+    const xlm = groups.find((g) => g.token === "XLM");
+    expect(usdc?.total).toBe(65n);
+    expect(xlm?.total).toBe(40n);
+  });
+
+  it("floors each stream's remainder and never goes negative", () => {
+    const groups = groupOutgoingByToken([
+      stream("USDC", 10n, 3n),
+      stream("USDC", 5n, 5n),
+    ]);
+    expect(groups[0].total).toBe(7n);
+  });
+
+  it("returns an empty list for no streams", () => {
+    expect(groupOutgoingByToken([])).toEqual([]);
   });
 });
 

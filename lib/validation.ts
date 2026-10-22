@@ -21,6 +21,10 @@ export type AmountCheck = { ok: true; baseUnits: bigint } | { ok: false; reason:
  * 7-decimal token looks positive but deposits nothing.
  */
 export function checkAmount(input: string, decimals: number): AmountCheck {
+  if (!Number.isInteger(decimals) || decimals < 0) {
+    return { ok: false, reason: "This token's decimal places are invalid." };
+  }
+
   const text = input.trim();
   if (text === "") return { ok: false, reason: "Enter an amount." };
   if (!/^(\d+\.?\d*|\.\d+)$/.test(text)) return { ok: false, reason: "Enter a valid, non-negative number." };

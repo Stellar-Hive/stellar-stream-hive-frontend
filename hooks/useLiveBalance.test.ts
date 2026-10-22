@@ -186,6 +186,33 @@ describe("useLiveBalance (simulated mode)", () => {
     unmount();
   });
 
+  it("fetches the ledger snapshot exactly once when disabled and reports the remaining balance", async () => {
+    fetchLatestLedgerSnapshot.mockResolvedValue({ ledger: 200, timestampMs: T0 });
+
+    const { result, unmount } = renderHook({
+      ...PARAMS,
+      enabled: false,
+      withdrawnAmount: 400n,
+    });
+
+    // Before the initial fetch resolves the hook must report a loading state.
+    expect(result.current.isLoading).toBe(true);
+    expect(fetchLatestLedgerSnapshot).toHaveBeenCalledTimes(1);
+
+    await vi.waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Completed stream: everything streamed, minus what was already withdrawn.
+    expect(result.current.streamed).toBe(1_000n);
+    expect(result.current.withdrawable).toBe(600n);
+    expect(result.current.progress).toBe(1);
+
+    // No interval: further time must not trigger more fetches or change values.
+    vi.advanceTimersByTime(LEDGER_MS * 50);
+    expect(fetchLatestLedgerSnapshot).toHaveBeenCalledTimes(1);
+    expect(result.current.withdrawable).toBe(600n);
+    unmount();
+  });
+
   it("stops ticking after unmount", () => {
     const { result, unmount } = renderHook(PARAMS);
     unmount();
