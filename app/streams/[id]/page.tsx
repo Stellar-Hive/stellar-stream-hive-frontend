@@ -15,7 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
-  formatRate,
+  formatRateFromBaseUnits,
   formatTokenAmount,
   shortenAddress,
   stellarExpertAccountUrl,
@@ -62,10 +62,13 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   const isCancellable =
     stream.cancellable &&
     (stream.status === "active" || stream.status === "cliff" || stream.status === "scheduled");
-  const totalTokens = Number(stream.totalAmount) / 10 ** stream.token.decimals;
   const totalSeconds = (stream.endLedger - stream.startLedger) * AVERAGE_LEDGER_SECONDS;
-  const ratePerSecond = totalSeconds > 0 ? totalTokens / totalSeconds : 0;
-  const rate = formatRate(ratePerSecond, stream.token.symbol);
+  const rate = formatRateFromBaseUnits(
+    BigInt(stream.totalAmount),
+    totalSeconds,
+    stream.token.symbol,
+    stream.token.decimals
+  );
   const contractConfigured = isStreamContractConfigured();
   const contractId = contractConfigured ? getStreamContractId() : null;
 

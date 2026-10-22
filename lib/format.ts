@@ -129,6 +129,41 @@ export function formatRate(amountPerSecond: number, symbol: string): { perSecond
 }
 
 /**
+ * Computes per-second/hour/day streaming rates from a base-unit (BigInt) total
+ * amount and a duration in seconds, entirely in BigInt arithmetic so large
+ * amounts never pass through a JS `number` (which loses precision above
+ * `Number.MAX_SAFE_INTEGER`). Each rate is floored to the token's base unit,
+ * never rounded up — a true rate smaller than one base unit per second will
+ * correctly display as "0" rather than a fabricated fractional value.
+ */
+export function formatRateFromBaseUnits(
+  totalAmount: bigint,
+  totalSeconds: number,
+  symbol: string,
+  decimals: number = STROOP_DECIMALS
+): { perSecond: string; perHour: string; perDay: string } {
+  const zero = {
+    perSecond: formatTokenAmount(0n, symbol, decimals, decimals),
+    perHour: formatTokenAmount(0n, symbol, decimals, decimals),
+    perDay: formatTokenAmount(0n, symbol, decimals, decimals),
+  };
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return zero;
+
+  const secondsBig = BigInt(Math.floor(totalSeconds));
+  if (secondsBig <= 0n) return zero;
+
+  const perSecond = totalAmount / secondsBig;
+  const perHour = (totalAmount * 3600n) / secondsBig;
+  const perDay = (totalAmount * 86400n) / secondsBig;
+
+  return {
+    perSecond: formatTokenAmount(perSecond, symbol, decimals, decimals),
+    perHour: formatTokenAmount(perHour, symbol, decimals, decimals),
+    perDay: formatTokenAmount(perDay, symbol, decimals, decimals),
+  };
+}
+
+/**
  * Describes the UTC offset that applies at `date` as e.g. "UTC+1", "UTC-3:30" or "UTC+0",
  * using the runtime's timezone rules for that instant. Pass `timeZone` (an IANA name) to
  * format for a specific zone instead of the local one. Returns null if the runtime cannot
