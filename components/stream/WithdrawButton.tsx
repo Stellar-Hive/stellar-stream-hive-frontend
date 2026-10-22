@@ -113,14 +113,21 @@ export function WithdrawButton({
     return (
       <div className="card border-primary/30 bg-primary/5">
         <p className="font-semibold text-primary">Withdrawal submitted</p>
-        <a
-          href={stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block text-sm text-accent underline"
-        >
-          View transaction on Stellar Expert
-        </a>
+        {(() => {
+          const explorerUrl = stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK);
+          return (
+            explorerUrl && (
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-sm text-accent underline"
+              >
+                View transaction on Stellar Expert
+              </a>
+            )
+          );
+        })()}
         <button
           type="button"
           className="btn-secondary mt-4 w-full"

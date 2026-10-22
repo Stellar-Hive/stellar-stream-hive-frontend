@@ -13,7 +13,7 @@ import { dateToEstimatedLedger } from "@/lib/streaming";
 import { checkAmount, checkRecipientNotSender } from "@/lib/validation";
 import { createStreamOnChain, isStreamContractConfigured, ContractNotConfiguredError } from "@/lib/contracts";
 import { describeFreighterError } from "@/lib/freighter";
-import { parseAmountToBaseUnits, stellarExpertTxUrl } from "@/lib/format";
+import { stellarExpertTxUrl } from "@/lib/format";
 import type { TokenInfo } from "@/types";
 import { ONE_DAY_MS } from "@/lib/constants";
 
@@ -110,14 +110,21 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
         <p className="mt-2 text-sm text-muted">
           Your stream is live and will begin accruing for the recipient as scheduled.
         </p>
-        <a
-          href={stellarExpertTxUrl(result.hash, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-block text-sm text-accent underline"
-        >
-          View transaction on Stellar Expert
-        </a>
+        {(() => {
+          const explorerUrl = stellarExpertTxUrl(result.hash, STELLAR_EXPERT_NETWORK);
+          return (
+            explorerUrl && (
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-block text-sm text-accent underline"
+              >
+                View transaction on Stellar Expert
+              </a>
+            )
+          );
+        })()}
         <div className="mt-6 flex flex-col gap-3">
           <button
             type="button"

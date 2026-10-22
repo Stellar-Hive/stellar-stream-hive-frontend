@@ -97,8 +97,7 @@ See [`.env.example`](./.env.example) for the full, documented list. In short:
   On any other network leave them blank and contract-calling features show a clear "not yet
   configured" state rather than failing silently.
 - `NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE`,
-  `NEXT_PUBLIC_SOROBAN_RPC_URL`, `NEXT_PUBLIC_HORIZON_URL` — network configuration, defaulted to
-  Stellar testnet.
+  `NEXT_PUBLIC_SOROBAN_RPC_URL` — network configuration, defaulted to Stellar testnet.
 - `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
   platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
   graceful empty/loading state rather than fabricating numbers.
