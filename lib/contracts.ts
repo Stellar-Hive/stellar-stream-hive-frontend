@@ -248,9 +248,6 @@ export async function cancelStreamOnChain(params: {
  * before submitting a withdraw transaction.
  */
 export async function fetchWithdrawableOnChain(streamId: string): Promise<bigint> {
-  const stream = await fetchStreamOnChain(streamId);
-  if (!stream) throw new Error("Stream not found on-chain.");
-
   const contractId = getStreamContractId();
   const server = getSorobanServer();
   const contract = new Contract(contractId);
@@ -266,6 +263,12 @@ export async function fetchWithdrawableOnChain(streamId: string): Promise<bigint
 
   const sim = await server.simulateTransaction(tx);
   if (SorobanRpc.Api.isSimulationError(sim)) {
+    // The contract raises StreamNotFound for unknown ids; map it to the same
+    // message the old pre-check (a separate get_stream simulation) used to
+    // produce, instead of paying for an extra RPC round trip up front.
+    if (/StreamNotFound/i.test(sim.error)) {
+      throw new Error("Stream not found on-chain.");
+    }
     throw new Error(sim.error);
   }
   if (!sim.result?.retval) return 0n;

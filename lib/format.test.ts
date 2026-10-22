@@ -140,6 +140,15 @@ describe("explorer urls", () => {
       `https://stellar.expert/explorer/public/tx/${hash}`
     );
   });
+
+  it("returns null for account/contract URLs when network is null (e.g. Futurenet)", () => {
+    expect(stellarExpertAccountUrl("GABC", null)).toBeNull();
+    expect(stellarExpertAccountUrl("CABC", null)).toBeNull();
+  });
+
+  it("returns null for transaction URLs when network is null (e.g. Futurenet)", () => {
+    expect(stellarExpertTxUrl("abc123", null)).toBeNull();
+  });
 });
 
 describe("formatRate", () => {

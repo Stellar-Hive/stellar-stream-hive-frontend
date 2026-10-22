@@ -151,11 +151,11 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
           <DetailRow label="End" value={format(stream.endTime, "PPpp")} />
           {stream.cliffTime && <DetailRow label="Cliff" value={format(stream.cliffTime, "PPpp")} />}
           <DetailRow label="Cancellable" value={stream.cancellable ? "Yes" : "No"} />
-          {contractId && (
+          {contractId && stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK) && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-muted">Stream contract</span>
               <a
-                href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)}
+                href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
                 rel="noreferrer"
                 className="text-accent underline"
@@ -165,11 +165,11 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
               </a>
             </div>
           )}
-          {stream.createTxHash && (
+          {stream.createTxHash && stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK) && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <span className="text-muted">Create tx</span>
               <a
-                href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)}
+                href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
                 rel="noreferrer"
                 className="text-accent underline"
@@ -214,15 +214,22 @@ function AddressRow({ label, address }: { label: string; address: string }) {
     <div className="mb-2 flex items-center justify-between text-sm last:mb-0">
       <span className="text-muted">{label}</span>
       <div className="flex items-center gap-1">
-        <a
-          href={stellarExpertAccountUrl(address, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-accent underline"
-        >
-          {shortenAddress(address)}
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
+        {(() => {
+          const explorerUrl = stellarExpertAccountUrl(address, STELLAR_EXPERT_NETWORK);
+          return explorerUrl ? (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent underline"
+            >
+              {shortenAddress(address)}
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          ) : (
+            <span>{shortenAddress(address)}</span>
+          );
+        })()}
         <CopyButton value={address} label="Copy address" />
       </div>
     </div>
