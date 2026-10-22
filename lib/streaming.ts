@@ -70,6 +70,51 @@ export function computeWithdrawable(params: WithdrawableParams): bigint {
   return withdrawable > 0n ? withdrawable : 0n;
 }
 
+export interface CancelSplitParams {
+  totalAmount: bigint;
+  /** Amount streamed to date, as computed by `computeStreamedAmount`. */
+  streamedAmount: bigint;
+  /** If set, nothing is paid to the recipient before this ledger. */
+  cliffLedger?: number;
+  currentLedger: number;
+}
+
+export interface CancelSplit {
+  recipientGets: bigint;
+  senderGets: bigint;
+}
+
+/**
+ * Computes how a cancelled stream's remaining balance is split, mirroring the
+ * contract: cancelling before the cliff refunds the sender in full and pays
+ * the recipient nothing; otherwise the recipient keeps what has streamed and
+ * the sender gets the rest. All amounts stay BigInt and are clamped to
+ * non-negative values.
+ */
+export function computeCancelSplit({
+  totalAmount,
+  streamedAmount,
+  cliffLedger,
+  currentLedger,
+}: CancelSplitParams): CancelSplit {
+  if (cliffLedger !== undefined && currentLedger < cliffLedger) {
+    return { recipientGets: 0n, senderGets: totalAmount > 0n ? totalAmount : 0n };
+  }
+
+  const recipientGets =
+    streamedAmount > 0n
+      ? streamedAmount > totalAmount
+        ? totalAmount
+        : streamedAmount
+      : 0n;
+  const senderGets = totalAmount - recipientGets;
+
+  return {
+    recipientGets,
+    senderGets: senderGets > 0n ? senderGets : 0n,
+  };
+}
+
 /**
  * Progress fraction (0..1) through the stream's total duration, for progress
  * bars / timelines. Not clamped to the cliff — this reflects raw time elapsed.

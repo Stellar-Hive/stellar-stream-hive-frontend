@@ -20,11 +20,11 @@ export function decimalsFactor(decimals: number = STROOP_DECIMALS): bigint {
  */
 export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_DECIMALS): bigint {
   const trimmed = input.trim();
-  if (trimmed === "" || Number.isNaN(Number(trimmed))) {
-    throw new Error("Invalid amount");
-  }
   const negative = trimmed.startsWith("-");
   if (negative) throw new Error("Amount must not be negative");
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(trimmed)) {
+    throw new Error("Invalid amount");
+  }
 
   const [wholeRaw, fracRaw = ""] = trimmed.split(".");
   const whole = wholeRaw === "" ? "0" : wholeRaw;
