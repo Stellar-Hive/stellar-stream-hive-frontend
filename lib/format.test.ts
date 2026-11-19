@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatBaseUnits,
+  formatGroupedNumber,
   formatRate,
   formatRateFromBaseUnits,
   formatTokenAmount,
@@ -319,5 +320,25 @@ describe("formatRate — notation boundaries", () => {
   it("treats Infinity as non-finite and returns zero", () => {
     expect(formatRate(Infinity, "XLM").perSecond).toBe("0 XLM");
     expect(formatRate(-Infinity, "XLM").perSecond).toBe("0 XLM");
+  });
+});
+
+describe("formatGroupedNumber", () => {
+  it("groups thousands with a fixed separator independent of locale", () => {
+    expect(formatGroupedNumber(0)).toBe("0");
+    expect(formatGroupedNumber(999)).toBe("999");
+    expect(formatGroupedNumber(1000)).toBe("1,000");
+    expect(formatGroupedNumber(1234567)).toBe("1,234,567");
+  });
+
+  it("formats bigint totals without losing precision or using the locale", () => {
+    expect(formatGroupedNumber(12345678901234567890n)).toBe("12,345,678,901,234,567,890");
+    expect(formatGroupedNumber(-2500000n)).toBe("-2,500,000");
+  });
+
+  it("handles negatives and non-finite numbers deterministically", () => {
+    expect(formatGroupedNumber(-1234)).toBe("-1,234");
+    expect(formatGroupedNumber(Infinity)).toBe("0");
+    expect(formatGroupedNumber(NaN)).toBe("0");
   });
 });

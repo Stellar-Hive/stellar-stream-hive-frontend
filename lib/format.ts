@@ -76,6 +76,25 @@ function groupThousands(digits: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/**
+ * Formats a whole number with thousands separators using a fixed, explicit
+ * grouping rule. Unlike `Number.prototype.toLocaleString()` this does not
+ * depend on the runtime's locale, so server and client render identical text
+ * and hydration never mismatches. Accepts `bigint` as well as `number` so
+ * large totals keep their full precision.
+ */
+export function formatGroupedNumber(value: number | bigint): string {
+  if (typeof value === "bigint") {
+    const negative = value < 0n;
+    const digits = (negative ? -value : value).toString();
+    return `${negative ? "-" : ""}${groupThousands(digits)}`;
+  }
+  if (!Number.isFinite(value)) return "0";
+  const negative = value < 0;
+  const digits = Math.trunc(Math.abs(value)).toString();
+  return `${negative ? "-" : ""}${groupThousands(digits)}`;
+}
+
 /** Formats a base-unit amount with a trailing token symbol, e.g. "12.3456789 XLM". */
 export function formatTokenAmount(
   amount: bigint,

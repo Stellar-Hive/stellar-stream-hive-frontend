@@ -5,6 +5,7 @@ import { addDays } from "date-fns";
 import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
 import { ONE_DAY_MS } from "@/lib/constants";
+import { formatGroupedNumber, formatUtcOffset } from "@/lib/format";
 
 export interface ScheduleInputProps {
   startDate: Date;
@@ -77,7 +78,7 @@ export function ScheduleInput({
   function ledgerLabel(date: Date): string {
     if (!reference) return "";
     const ledger = dateToEstimatedLedger(date, { ledger: reference.ledger, timestampMs: reference.timestampMs });
-    return `≈ ledger ${ledger.toLocaleString()}`;
+    return `≈ ledger ${formatGroupedNumber(ledger)}`;
   }
 
   return (

@@ -5,6 +5,7 @@ import { LiveBalance } from "@/components/stream/LiveBalance";
 import { StreamProgress } from "@/components/stream/StreamProgress";
 import { AVERAGE_LEDGER_SECONDS } from "@/lib/streaming";
 import type { LedgerSnapshot } from "@/lib/stellar";
+import { formatGroupedNumber } from "@/lib/format";
 
 const DEMO_TOTAL_XLM = 10_000;
 const DEMO_TOTAL_BASE_UNITS = (BigInt(DEMO_TOTAL_XLM) * 10_000_000n).toString(); // 7-decimal fixed point
@@ -33,7 +34,7 @@ export function LiveDemo() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-white">Demo salary stream</p>
-          <p className="text-xs text-muted">{DEMO_TOTAL_XLM.toLocaleString()} XLM over {DEMO_DURATION_DAYS} days · simulated, no wallet needed</p>
+          <p className="text-xs text-muted">{formatGroupedNumber(DEMO_TOTAL_XLM)} XLM over {DEMO_DURATION_DAYS} days · simulated, no wallet needed</p>
         </div>
       </div>
 

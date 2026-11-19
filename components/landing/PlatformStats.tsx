@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchPlatformStats, isApiConfigured } from "@/lib/api";
 import { Spinner } from "@/components/ui/Spinner";
 import type { PlatformStats } from "@/types";
+import { formatGroupedNumber } from "@/lib/format";
 
 /**
  * Platform-wide stats sourced from the indexer API. If the API is not
@@ -47,8 +48,8 @@ export function PlatformStats() {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <StatCard label="Streams created" value={stats.totalStreams.toLocaleString()} />
-      <StatCard label="Active streams" value={stats.totalActiveStreams.toLocaleString()} />
+      <StatCard label="Streams created" value={formatGroupedNumber(stats.totalStreams)} />
+      <StatCard label="Active streams" value={formatGroupedNumber(stats.totalActiveStreams)} />
       {/*
        * `total_streamed` from the API (/stats) sums raw base units across ALL
        * tokens, regardless of their decimal precision or symbol. Formatting it
@@ -59,7 +60,7 @@ export function PlatformStats() {
        */}
       <StatCard
         label="Total streamed (base units, all tokens)"
-        value={BigInt(stats.totalStreamedBaseUnits).toLocaleString()}
+        value={formatGroupedNumber(BigInt(stats.totalStreamedBaseUnits))}
       />
     </div>
   );
