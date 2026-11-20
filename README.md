@@ -7,11 +7,11 @@ application.
 
 ## Related repositories
 
-| Repo | Purpose |
-| --- | --- |
-| [`stellar-stream-hive-contract`](https://github.com/Stellar-Hive/stellar-stream-hive-contract) | Soroban smart contracts (Stream, Vault, Registry) |
-| [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api) | Indexer/registry API used for stats and stream listings |
-| `stellar-stream-hive-frontend` (this repo) | Next.js web app |
+| Repo                                                                                           | Purpose                                                 |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [`stellar-stream-hive-contract`](https://github.com/Stellar-Hive/stellar-stream-hive-contract) | Soroban smart contracts (Stream, Vault, Registry)       |
+| [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api)           | Indexer/registry API used for stats and stream listings |
+| `stellar-stream-hive-frontend` (this repo)                                                     | Next.js web app                                         |
 
 ## Screenshots
 
@@ -19,8 +19,8 @@ Captured against testnet with throwaway test accounts — no real addresses, bal
 transaction hashes. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for the
 capture steps and the full expected set; the images below are pending capture.
 
-| The live, ticking balance | Create a stream | Streams you're sending |
-| --- | --- | --- |
+| The live, ticking balance                                    | Create a stream                                         | Streams you're sending                             |
+| ------------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------- |
 | ![Receiving balance](docs/screenshots/receiving-balance.png) | ![Create stream form](docs/screenshots/streams-new.png) | ![Sending list](docs/screenshots/sending-list.png) |
 
 ## The signature feature: LiveBalance
@@ -45,15 +45,15 @@ for a transaction.
 
 ## npm scripts
 
-| Script | Description |
-| --- | --- |
-| `dev` | Start the Next.js development server |
-| `build` | Production build |
-| `start` | Serve the production build |
-| `lint` | Run ESLint |
-| `typecheck` | Run the TypeScript compiler with `--noEmit` |
-| `test` | Run Vitest once |
-| `test:watch` | Run Vitest in watch mode |
+| Script       | Description                                 |
+| ------------ | ------------------------------------------- |
+| `dev`        | Start the Next.js development server        |
+| `build`      | Production build                            |
+| `start`      | Serve the production build                  |
+| `lint`       | Run ESLint                                  |
+| `typecheck`  | Run the TypeScript compiler with `--noEmit` |
+| `test`       | Run Vitest once                             |
+| `test:watch` | Run Vitest in watch mode                    |
 
 ## Tech stack
 
@@ -76,15 +76,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## npm scripts
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Starts the development server on [http://localhost:3000](http://localhost:3000) with hot reload |
-| `npm run build` | Creates a production build and runs the full TypeScript and Next.js checks |
-| `npm run start` | Serves the production build made by `npm run build` |
-| `npm run lint` | Runs ESLint with the `next/core-web-vitals` rules |
-| `npm run typecheck` | Runs `tsc --noEmit` in strict mode |
-| `npm test` | Runs the Vitest unit tests once |
-| `npm run test:watch` | Runs the Vitest unit tests and re-runs them on every file change |
+| Command              | What it does                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| `npm run dev`        | Starts the development server on [http://localhost:3000](http://localhost:3000) with hot reload |
+| `npm run build`      | Creates a production build and runs the full TypeScript and Next.js checks                      |
+| `npm run start`      | Serves the production build made by `npm run build`                                             |
+| `npm run lint`       | Runs ESLint with the `next/core-web-vitals` rules                                               |
+| `npm run typecheck`  | Runs `tsc --noEmit` in strict mode                                                              |
+| `npm test`           | Runs the Vitest unit tests once                                                                 |
+| `npm run test:watch` | Runs the Vitest unit tests and re-runs them on every file change                                |
 
 ## Environment variables
 
@@ -197,12 +197,12 @@ All four run in CI on every push and pull request (`.github/workflows/ci.yml`).
 The unit tests target the logic where a mistake would cost someone money or show
 them a wrong balance, and run without a browser, wallet or network:
 
-| Module | What is covered |
-| --- | --- |
-| `lib/streaming.ts` | The accrual formula against the contract's own test vectors: flooring, multiply-before-divide, cliff, monotonicity, BigInt precision beyond `Number.MAX_SAFE_INTEGER`, ledger/time estimation |
-| `lib/format.ts` | Decimal parsing and formatting round-trips, truncation instead of rounding, address and explorer URL helpers |
-| `lib/streamMapping.ts` | Mapping the indexer API's and the contract's responses into the app's `Stream` type |
-| `lib/streamList.ts` | Status filters and CSV export (including spreadsheet-formula neutralisation) |
+| Module                 | What is covered                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/streaming.ts`     | The accrual formula against the contract's own test vectors: flooring, multiply-before-divide, cliff, monotonicity, BigInt precision beyond `Number.MAX_SAFE_INTEGER`, ledger/time estimation |
+| `lib/format.ts`        | Decimal parsing and formatting round-trips, truncation instead of rounding, address and explorer URL helpers                                                                                  |
+| `lib/streamMapping.ts` | Mapping the indexer API's and the contract's responses into the app's `Stream` type                                                                                                           |
+| `lib/streamList.ts`    | Status filters and CSV export (including spreadsheet-formula neutralisation)                                                                                                                  |
 
 ## Backend compatibility
 
@@ -246,9 +246,9 @@ shown, with amounts as human-readable decimals.
 
 ## Troubleshooting
 
-| Problem | Cause | Fix |
-| --- | --- | --- |
-| "Freighter not detected" | Freighter extension not installed or page loaded before it initialised | Install [Freighter](https://www.freighter.app/), reload the page, and ensure it is enabled for this site |
-| Wrong network badge (e.g. Mainnet instead of Testnet) | `NEXT_PUBLIC_STELLAR_NETWORK` does not match the network selected in Freighter | Set the variable in `.env.local` to `testnet` or `mainnet` and restart the dev server |
-| CORS errors calling the indexer API | `NEXT_PUBLIC_API_BASE_URL` points to a server that does not allow the app's origin | Verify the URL in `.env.local` and ensure the API's CORS config includes your origin |
-| "Contract not configured" | `NEXT_PUBLIC_STREAM_CONTRACT_ID` is missing or invalid | Add the deployed contract ID to `.env.local` (see `.env.example`) |
+| Problem                                               | Cause                                                                              | Fix                                                                                                      |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| "Freighter not detected"                              | Freighter extension not installed or page loaded before it initialised             | Install [Freighter](https://www.freighter.app/), reload the page, and ensure it is enabled for this site |
+| Wrong network badge (e.g. Mainnet instead of Testnet) | `NEXT_PUBLIC_STELLAR_NETWORK` does not match the network selected in Freighter     | Set the variable in `.env.local` to `testnet` or `mainnet` and restart the dev server                    |
+| CORS errors calling the indexer API                   | `NEXT_PUBLIC_API_BASE_URL` points to a server that does not allow the app's origin | Verify the URL in `.env.local` and ensure the API's CORS config includes your origin                     |
+| "Contract not configured"                             | `NEXT_PUBLIC_STREAM_CONTRACT_ID` is missing or invalid                             | Add the deployed contract ID to `.env.local` (see `.env.example`)                                        |

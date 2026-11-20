@@ -101,12 +101,7 @@ export function computeCancelSplit({
     return { recipientGets: 0n, senderGets: totalAmount > 0n ? totalAmount : 0n };
   }
 
-  const recipientGets =
-    streamedAmount > 0n
-      ? streamedAmount > totalAmount
-        ? totalAmount
-        : streamedAmount
-      : 0n;
+  const recipientGets = streamedAmount > 0n ? (streamedAmount > totalAmount ? totalAmount : streamedAmount) : 0n;
   const senderGets = totalAmount - recipientGets;
 
   return {
@@ -119,11 +114,7 @@ export function computeCancelSplit({
  * Progress fraction (0..1) through the stream's total duration, for progress
  * bars / timelines. Not clamped to the cliff — this reflects raw time elapsed.
  */
-export function computeProgress(params: {
-  startLedger: number;
-  endLedger: number;
-  currentLedger: number;
-}): number {
+export function computeProgress(params: { startLedger: number; endLedger: number; currentLedger: number }): number {
   const { startLedger, endLedger, currentLedger } = params;
   if (endLedger <= startLedger) return 1;
   if (currentLedger <= startLedger) return 0;
@@ -153,20 +144,14 @@ export function estimateCurrentLedger(params: {
  * reference (current) ledger/time pair. Used by the create-stream form to
  * translate human-picked start/cliff/end dates into ledger numbers.
  */
-export function dateToEstimatedLedger(
-  date: Date,
-  reference: { ledger: number; timestampMs: number }
-): number {
+export function dateToEstimatedLedger(date: Date, reference: { ledger: number; timestampMs: number }): number {
   const deltaSeconds = (date.getTime() - reference.timestampMs) / 1000;
   const deltaLedgers = Math.round(deltaSeconds / AVERAGE_LEDGER_SECONDS);
   return reference.ledger + deltaLedgers;
 }
 
 /** Converts a ledger number back into an estimated wall-clock Date. */
-export function ledgerToEstimatedDate(
-  ledger: number,
-  reference: { ledger: number; timestampMs: number }
-): Date {
+export function ledgerToEstimatedDate(ledger: number, reference: { ledger: number; timestampMs: number }): Date {
   const deltaLedgers = ledger - reference.ledger;
   const deltaMs = deltaLedgers * AVERAGE_LEDGER_SECONDS * 1000;
   return new Date(reference.timestampMs + deltaMs);

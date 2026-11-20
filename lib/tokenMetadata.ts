@@ -62,10 +62,7 @@ export function sanitizeDecimals(raw: unknown): number | null {
  * fields were valid: a half-valid result falls back entirely, because pairing a
  * real symbol with guessed decimals would look trustworthy while being wrong.
  */
-export function toTokenInfo(
-  contractId: string,
-  raw: RawTokenMetadata | null
-): { token: TokenInfo; detected: boolean } {
+export function toTokenInfo(contractId: string, raw: RawTokenMetadata | null): { token: TokenInfo; detected: boolean } {
   const symbol = raw ? sanitizeSymbol(raw.symbol) : null;
   const decimals = raw ? sanitizeDecimals(raw.decimals) : null;
   if (symbol === null || decimals === null) return { token: fallbackToken(contractId), detected: false };
@@ -85,10 +82,7 @@ export interface TokenMetadataCache {
  * cached: a transient RPC error shouldn't pin the fallback for the whole session.
  * `known` entries (e.g. native XLM) are answered without touching the network.
  */
-export function createTokenMetadataCache(
-  read: TokenReader,
-  known: Record<string, TokenInfo> = {}
-): TokenMetadataCache {
+export function createTokenMetadataCache(read: TokenReader, known: Record<string, TokenInfo> = {}): TokenMetadataCache {
   const resolved = new Map<string, TokenInfo>();
   const inFlight = new Map<string, Promise<{ token: TokenInfo; detected: boolean }>>();
 

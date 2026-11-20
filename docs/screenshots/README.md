@@ -14,11 +14,11 @@ Screenshots section.
 
 ## Expected files
 
-| File | Screen | Source page |
-| --- | --- | --- |
-| `receiving-balance.png` | The live, ticking balance counter (the product's signature feature) | `app/receiving/page.tsx` |
-| `streams-new.png` | The create-stream form | `app/streams/new/page.tsx` |
-| `sending-list.png` | The list of streams an account is sending | `app/sending/page.tsx` |
-| `stream-detail.png` *(optional 4th)* | A single stream's detail view | `app/streams/[id]/page.tsx` |
+| File                                 | Screen                                                              | Source page                 |
+| ------------------------------------ | ------------------------------------------------------------------- | --------------------------- |
+| `receiving-balance.png`              | The live, ticking balance counter (the product's signature feature) | `app/receiving/page.tsx`    |
+| `streams-new.png`                    | The create-stream form                                              | `app/streams/new/page.tsx`  |
+| `sending-list.png`                   | The list of streams an account is sending                           | `app/sending/page.tsx`      |
+| `stream-detail.png` _(optional 4th)_ | A single stream's detail view                                       | `app/streams/[id]/page.tsx` |
 
 Keep this table in sync with `README.md`'s Screenshots section if a filename changes.

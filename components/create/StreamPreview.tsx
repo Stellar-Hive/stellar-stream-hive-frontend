@@ -42,7 +42,10 @@ export function StreamPreview({ amount, token, startDate, endDate, recipient }: 
       </div>
       <div className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
         <SummaryRow label="Recipient" value={recipient || "—"} mono />
-        <SummaryRow label="Total amount" value={formatBaseUnits(totalAmount, token.decimals, { grouped: true }) + ` ${token.symbol}`} />
+        <SummaryRow
+          label="Total amount"
+          value={formatBaseUnits(totalAmount, token.decimals, { grouped: true }) + ` ${token.symbol}`}
+        />
         <SummaryRow label="Duration" value={durationLabel} />
       </div>
     </div>

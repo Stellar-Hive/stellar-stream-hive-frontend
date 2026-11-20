@@ -33,9 +33,7 @@ export const defaultTokenResolver: TokenResolver = (contractId) => ({
 /** Builds a resolver that knows about the native XLM contract and falls back otherwise. */
 export function makeTokenResolver(nativeContractId: string): TokenResolver {
   return (contractId) =>
-    contractId === nativeContractId
-      ? { contractId, symbol: "XLM", decimals: 7 }
-      : defaultTokenResolver(contractId);
+    contractId === nativeContractId ? { contractId, symbol: "XLM", decimals: 7 } : defaultTokenResolver(contractId);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +82,10 @@ export interface ApiReadiness {
  * "cliff" state, so an active stream still before its cliff ledger is shown as
  * "cliff" (accruing, but nothing withdrawable yet).
  */
-export function mapApiStatus(view: Pick<ApiStreamView, "status" | "start_ledger" | "cliff_ledger">, currentLedger?: number): StreamStatus {
+export function mapApiStatus(
+  view: Pick<ApiStreamView, "status" | "start_ledger" | "cliff_ledger">,
+  currentLedger?: number
+): StreamStatus {
   switch (view.status) {
     case "pending":
       return "scheduled";

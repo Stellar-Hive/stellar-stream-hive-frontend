@@ -48,7 +48,9 @@ export default function ReceivingPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6">
         <h1 className="text-2xl font-bold">Streams you&apos;re receiving</h1>
-        <p className="mx-auto mt-3 max-w-sm text-muted">Connect your wallet to see streams where you&apos;re the recipient.</p>
+        <p className="mx-auto mt-3 max-w-sm text-muted">
+          Connect your wallet to see streams where you&apos;re the recipient.
+        </p>
         <div className="mt-6 flex justify-center">
           <ConnectButton />
         </div>

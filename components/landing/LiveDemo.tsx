@@ -33,7 +33,9 @@ export function LiveDemo() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-white">Demo salary stream</p>
-          <p className="text-xs text-muted">{DEMO_TOTAL_XLM.toLocaleString()} XLM over {DEMO_DURATION_DAYS} days · simulated, no wallet needed</p>
+          <p className="text-xs text-muted">
+            {DEMO_TOTAL_XLM.toLocaleString()} XLM over {DEMO_DURATION_DAYS} days · simulated, no wallet needed
+          </p>
         </div>
       </div>
 

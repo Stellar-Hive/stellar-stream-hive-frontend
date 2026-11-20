@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchLatestLedgerSnapshot } from '@/lib/stellar';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchLatestLedgerSnapshot } from "@/lib/stellar";
 
 /** How often the shared ledger snapshot re-syncs from Soroban RPC. */
 export const RESYNC_MS = 30_000;
@@ -41,22 +41,15 @@ function toError(value: unknown): Error {
  * this hook within the same page share the same polling cadence, avoiding
  * duplicate RPC calls.
  */
-export function useLedgerSnapshot(
-  options: UseLedgerSnapshotOptions = {},
-): LedgerSnapshot {
+export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): LedgerSnapshot {
   const { simulatedReference, enabled = true } = options;
 
-  const hasSimulated =
-    simulatedReference !== undefined && simulatedReference !== null;
+  const hasSimulated = simulatedReference !== undefined && simulatedReference !== null;
 
-  const [reference, setReference] = useState<number | null>(
-    hasSimulated ? simulatedReference : null,
-  );
+  const [reference, setReference] = useState<number | null>(hasSimulated ? simulatedReference : null);
   const [isLoading, setIsLoading] = useState<boolean>(!hasSimulated);
   const [error, setError] = useState<Error | null>(null);
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(
-    hasSimulated ? Date.now() : null,
-  );
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(hasSimulated ? Date.now() : null);
 
   const mountedRef = useRef(true);
 

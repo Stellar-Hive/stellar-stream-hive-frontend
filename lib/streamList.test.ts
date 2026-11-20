@@ -66,7 +66,10 @@ describe("searchStreams", () => {
   const RECIPIENT = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
   const list = [
     stream("alpha-1", "active"),
-    stream("beta-2", "active", { sender: "GDQP2KPQGKIHYJGXNUIYOMHARUARCANHJQ4ZWZ5GFPUCUDR6WZ5ZDZ7Q", recipient: "GCBBBBB" }),
+    stream("beta-2", "active", {
+      sender: "GDQP2KPQGKIHYJGXNUIYOMHARUARCANHJQ4ZWZ5GFPUCUDR6WZ5ZDZ7Q",
+      recipient: "GCBBBBB",
+    }),
   ];
   const ids = (found: Stream[]) => found.map((s) => s.id);
 
@@ -178,15 +181,17 @@ describe("streamsToCsv", () => {
     );
   });
   it("leaves the cliff column empty when there is none", () => {
-    expect(streamsToCsv([stream("1", "active")]).trim().split("\r\n")[1]).toMatch(/,200,,true$/);
+    expect(
+      streamsToCsv([stream("1", "active")])
+        .trim()
+        .split("\r\n")[1]
+    ).toMatch(/,200,,true$/);
   });
   it("is header-only for an empty list", () => {
     expect(streamsToCsv([]).trim().split("\r\n")).toHaveLength(1);
   });
   it("writes a cancelled stream with its partial withdrawal and no cancel right", () => {
-    const [, row] = streamsToCsv([
-      stream("7", "cancelled", { withdrawnAmount: "2500000", cancellable: false }),
-    ])
+    const [, row] = streamsToCsv([stream("7", "cancelled", { withdrawnAmount: "2500000", cancellable: false })])
       .trim()
       .split("\r\n");
     const cells = row.split(",");

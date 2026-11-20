@@ -40,7 +40,8 @@ export function checkAmount(input: string, decimals: number): AmountCheck {
     };
   }
 
-  const baseUnits = BigInt(whole === "" ? "0" : whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
+  const baseUnits =
+    BigInt(whole === "" ? "0" : whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
   if (baseUnits === 0n) return { ok: false, reason: "Amount must be greater than zero." };
   if (baseUnits > I128_MAX) return { ok: false, reason: "Amount is too large." };
   return { ok: true, baseUnits };

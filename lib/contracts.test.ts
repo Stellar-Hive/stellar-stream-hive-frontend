@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  ContractNotConfiguredError,
-  getStreamContractId,
-  isStreamContractConfigured,
-} from "./contracts";
+import { ContractNotConfiguredError, getStreamContractId, isStreamContractConfigured } from "./contracts";
 
 describe("getStreamContractId", () => {
   const original = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;

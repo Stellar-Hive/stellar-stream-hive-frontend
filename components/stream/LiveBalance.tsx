@@ -93,9 +93,7 @@ export function LiveBalance({
       </div>
       <div
         aria-live="off"
-        className={`mono-tabular font-bold leading-tight ${
-          size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl"
-        }`}
+        className={`mono-tabular font-bold leading-tight ${size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl"}`}
       >
         {formatted} <span className="text-muted">{tokenSymbol}</span>
       </div>

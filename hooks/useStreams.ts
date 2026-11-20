@@ -40,7 +40,8 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
       setIsLoading(true);
       setError(null);
       try {
-        const results = role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
+        const results =
+          role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
         if (isStale()) return;
         setStreams(results);
       } catch (err) {
@@ -53,7 +54,7 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
         if (!isStale()) setIsLoading(false);
       }
     },
-    [address, role],
+    [address, role]
   );
 
   useEffect(() => {
@@ -65,7 +66,6 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
   }, [load]);
 
   const refetch = useCallback(() => load(), [load]);
-=======
 
   return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch };
 }

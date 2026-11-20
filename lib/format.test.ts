@@ -135,9 +135,7 @@ describe("explorer urls", () => {
 
   it("builds public-network account URL for a G… address", () => {
     const addr = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
-    expect(stellarExpertAccountUrl(addr, "public")).toBe(
-      `https://stellar.expert/explorer/public/account/${addr}`
-    );
+    expect(stellarExpertAccountUrl(addr, "public")).toBe(`https://stellar.expert/explorer/public/account/${addr}`);
   });
 
   it("builds public-network contract URL for a C… address", () => {
@@ -149,9 +147,7 @@ describe("explorer urls", () => {
 
   it("builds public-network transaction URL for a tx hash", () => {
     const hash = "6bc97b2f36b2f6f1a7f1e4cbe6cd2b0d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8";
-    expect(stellarExpertTxUrl(hash, "public")).toBe(
-      `https://stellar.expert/explorer/public/tx/${hash}`
-    );
+    expect(stellarExpertTxUrl(hash, "public")).toBe(`https://stellar.expert/explorer/public/tx/${hash}`);
   });
 
   it("returns null for account/contract URLs when network is null (e.g. Futurenet)", () => {

@@ -98,7 +98,10 @@ export function shortenAddress(address: string, lead: number = 4, trail: number 
  * Expert does not index) so callers can hide the link instead of pointing
  * at the wrong network.
  */
-export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" | null = "testnet"): string | null {
+export function stellarExpertAccountUrl(
+  address: string,
+  network: "testnet" | "public" | null = "testnet"
+): string | null {
   if (network === null) return null;
   const kind = address.startsWith("C") ? "contract" : "account";
   return `https://stellar.expert/explorer/${network}/${kind}/${address}`;
@@ -114,7 +117,10 @@ export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" |
 }
 
 /** Formats a plain number of base units per second/hour/day into a human rate string. */
-export function formatRate(amountPerSecond: number, symbol: string): { perSecond: string; perHour: string; perDay: string } {
+export function formatRate(
+  amountPerSecond: number,
+  symbol: string
+): { perSecond: string; perHour: string; perDay: string } {
   const fmt = (n: number) => {
     if (!Number.isFinite(n)) return "0";
     if (n === 0) return "0";

@@ -66,7 +66,11 @@ describe("NavBar", () => {
     const [toggle] = findAll(element, (el) => el.props["aria-label"] === "Toggle navigation menu");
 
     expect(toggle.props["aria-expanded"]).toBe(true);
-    expect(linksIn(mobile).filter(isHighlighted).map((link) => textOf(link))).toEqual(["Receiving"]);
+    expect(
+      linksIn(mobile)
+        .filter(isHighlighted)
+        .map((link) => textOf(link))
+    ).toEqual(["Receiving"]);
   });
 
   it("closes the mobile menu when a link is chosen", () => {

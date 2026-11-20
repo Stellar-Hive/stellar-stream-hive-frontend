@@ -132,7 +132,9 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
                 {contractIdError}
               </p>
             )}
-            {detection === "checking" && <p className="mt-1.5 text-xs text-muted">Reading token details from the contract…</p>}
+            {detection === "checking" && (
+              <p className="mt-1.5 text-xs text-muted">Reading token details from the contract…</p>
+            )}
             {detected && (
               <p className="mt-1.5 text-xs text-primary">
                 Detected {token.symbol} with {token.decimals} decimals from the token contract.
@@ -140,8 +142,8 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
             )}
             {detection === "manual" && (
               <p className="mt-1.5 text-xs text-warning">
-                Couldn&apos;t read this token&apos;s details. Enter the symbol and decimals yourself and double-check the
-                decimals — a wrong value changes how much is deposited.
+                Couldn&apos;t read this token&apos;s details. Enter the symbol and decimals yourself and double-check
+                the decimals — a wrong value changes how much is deposited.
               </p>
             )}
           </div>

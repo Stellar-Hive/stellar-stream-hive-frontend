@@ -19,8 +19,8 @@ function resolveNetwork(raw: string | undefined): StellarNetwork {
   // eslint-disable-next-line no-console
   console.warn(
     `Unknown NEXT_PUBLIC_STELLAR_NETWORK value "${raw}"; expected one of ${VALID_NETWORKS.join(
-      ", ",
-    )}. Falling back to TESTNET.`,
+      ", "
+    )}. Falling back to TESTNET.`
   );
   return "TESTNET";
 }
@@ -28,11 +28,9 @@ function resolveNetwork(raw: string | undefined): StellarNetwork {
 export const NETWORK = resolveNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK);
 
 export const NETWORK_PASSPHRASE =
-  process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ||
-  (NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET);
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE || (NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET);
 
-export const SOROBAN_RPC_URL =
-  process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
+export const SOROBAN_RPC_URL = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
 
 /**
  * Stellar Expert network slug for building explorer links. Stellar Expert

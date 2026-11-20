@@ -34,8 +34,15 @@ export interface UseLiveBalanceParams {
  * withdrawable amount larger than the contract would actually allow.
  */
 export function useLiveBalance(params: UseLiveBalanceParams): LiveBalanceState {
-  const { totalAmount, withdrawnAmount, startLedger, endLedger, cliffLedger, simulatedReference, enabled = true } =
-    params;
+  const {
+    totalAmount,
+    withdrawnAmount,
+    startLedger,
+    endLedger,
+    cliffLedger,
+    simulatedReference,
+    enabled = true,
+  } = params;
 
   const [, setTick] = useState(0);
 

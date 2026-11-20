@@ -15,7 +15,7 @@ function isElement(node: ReactNode): node is AnyElement {
 export function findAll(
   node: ReactNode,
   predicate: (element: AnyElement) => boolean,
-  out: AnyElement[] = [],
+  out: AnyElement[] = []
 ): AnyElement[] {
   if (Array.isArray(node)) {
     node.forEach((child) => findAll(child as ReactNode, predicate, out));

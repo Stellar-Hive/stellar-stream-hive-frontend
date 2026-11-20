@@ -18,7 +18,7 @@ describe("describeFreighterError", () => {
     const err = new Error("not installed");
     err.name = "FreighterNotInstalledError";
     expect(describeFreighterError(err)).toBe(
-      "Freighter wallet extension isn't installed. Install it from freighter.app to connect.",
+      "Freighter wallet extension isn't installed. Install it from freighter.app to connect."
     );
   });
 
@@ -26,7 +26,7 @@ describe("describeFreighterError", () => {
     const err = new Error("access denied");
     err.name = "FreighterAccessDeniedError";
     expect(describeFreighterError(err)).toBe(
-      "Wallet access was denied. Please approve the connection request in Freighter.",
+      "Wallet access was denied. Please approve the connection request in Freighter."
     );
   });
 
@@ -38,16 +38,12 @@ describe("describeFreighterError", () => {
 
   it("returns rejection message for Error containing rejected/declined/cancelled", () => {
     const err = new Error("Transaction was rejected by the user");
-    expect(describeFreighterError(err)).toBe(
-      "Transaction was rejected in your wallet.",
-    );
+    expect(describeFreighterError(err)).toBe("Transaction was rejected in your wallet.");
   });
 
   it("returns rejection message for Error containing declined", () => {
     const err = new Error("Transaction declined by user");
-    expect(describeFreighterError(err)).toBe(
-      "Transaction was rejected in your wallet.",
-    );
+    expect(describeFreighterError(err)).toBe("Transaction was rejected in your wallet.");
   });
 
   it("returns error message for generic Error", () => {
@@ -56,17 +52,9 @@ describe("describeFreighterError", () => {
   });
 
   it("returns unknown message for non-Error value", () => {
-    expect(describeFreighterError("not an error")).toBe(
-      "An unknown wallet error occurred.",
-    );
-    expect(describeFreighterError(null)).toBe(
-      "An unknown wallet error occurred.",
-    );
-    expect(describeFreighterError(42)).toBe(
-      "An unknown wallet error occurred.",
-    );
-    expect(describeFreighterError(undefined)).toBe(
-      "An unknown wallet error occurred.",
-    );
+    expect(describeFreighterError("not an error")).toBe("An unknown wallet error occurred.");
+    expect(describeFreighterError(null)).toBe("An unknown wallet error occurred.");
+    expect(describeFreighterError(42)).toBe("An unknown wallet error occurred.");
+    expect(describeFreighterError(undefined)).toBe("An unknown wallet error occurred.");
   });
 });

@@ -61,10 +61,7 @@ export function StreamTimeline({
   return (
     <div className="w-full">
       <div className="relative h-3 w-full rounded-full bg-border" role="img" aria-label={ariaLabel}>
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-primary/30"
-          style={{ width: `${nowPct}%` }}
-        />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-primary/30" style={{ width: `${nowPct}%` }} />
         {cliffPct !== null && (
           <div
             className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-warning"

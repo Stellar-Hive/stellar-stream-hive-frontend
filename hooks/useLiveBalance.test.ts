@@ -24,7 +24,7 @@ vi.mock("react", () => {
     !next || !prev || next.some((dep, i) => !Object.is(dep, prev[i]));
 
   return {
-    useState: <T,>(initial: T | (() => T)) => {
+    useState: <T>(initial: T | (() => T)) => {
       const i = runtime.index++;
       if (!(i in runtime.slots)) {
         runtime.slots[i] = { value: typeof initial === "function" ? (initial as () => T)() : initial };
@@ -39,7 +39,7 @@ vi.mock("react", () => {
       };
       return [runtime.slots[i].value as T, setState] as const;
     },
-    useRef: <T,>(initial: T) => {
+    useRef: <T>(initial: T) => {
       const i = runtime.index++;
       if (!(i in runtime.slots)) runtime.slots[i] = { value: { current: initial } };
       return runtime.slots[i].value as { current: T };
@@ -84,8 +84,7 @@ function renderHook(params: UseLiveBalanceParams) {
   runtime.render();
   return {
     result,
-    unmount: () =>
-      runtime.slots.forEach((slot) => (slot.cleanup as (() => void) | undefined)?.()),
+    unmount: () => runtime.slots.forEach((slot) => (slot.cleanup as (() => void) | undefined)?.()),
   };
 }
 

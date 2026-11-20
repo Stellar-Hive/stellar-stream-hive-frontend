@@ -60,7 +60,7 @@ export function useStream(id: string): UseStreamResult {
         if (!stale()) setIsLoading(false);
       }
     },
-    [id],
+    [id]
   );
 
   useEffect(() => {

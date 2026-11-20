@@ -23,7 +23,7 @@ describe("LiveBalance accessibility", () => {
         endLedger={2}
         tokenSymbol="XLM"
         simulatedReference={{ ledger: 1, timestampMs: 0 }}
-      />,
+      />
     );
     const labelId = html.match(/aria-labelledby="([^"]+)"/)?.[1];
 

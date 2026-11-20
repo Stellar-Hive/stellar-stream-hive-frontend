@@ -122,8 +122,13 @@ describe("mapApiStats", () => {
   });
   it("passes through total_value_locked when present", () => {
     expect(
-      mapApiStats({ total_streams: 1, active_streams: 1, total_streamed: "1", total_withdrawn: "0", total_value_locked: "9" })
-        .totalValueLockedBaseUnits
+      mapApiStats({
+        total_streams: 1,
+        active_streams: 1,
+        total_streamed: "1",
+        total_withdrawn: "0",
+        total_value_locked: "9",
+      }).totalValueLockedBaseUnits
     ).toBe("9");
   });
 });

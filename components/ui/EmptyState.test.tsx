@@ -9,34 +9,18 @@ describe("EmptyState", () => {
   });
 
   it("renders the description when provided", () => {
-    render(
-      <EmptyState
-        title="Nothing here"
-        description="Create your first stream to get started."
-      />,
-    );
-    expect(
-      screen.getByText("Create your first stream to get started."),
-    ).toBeInTheDocument();
+    render(<EmptyState title="Nothing here" description="Create your first stream to get started." />);
+    expect(screen.getByText("Create your first stream to get started.")).toBeInTheDocument();
   });
 
   it("does not render a description when omitted", () => {
     render(<EmptyState title="Nothing here" />);
-    expect(
-      screen.queryByText("Create your first stream to get started."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Create your first stream to get started.")).not.toBeInTheDocument();
   });
 
   it("renders the action when provided", () => {
-    render(
-      <EmptyState
-        title="Nothing here"
-        action={<button type="button">Create stream</button>}
-      />,
-    );
-    expect(
-      screen.getByRole("button", { name: "Create stream" }),
-    ).toBeInTheDocument();
+    render(<EmptyState title="Nothing here" action={<button type="button">Create stream</button>} />);
+    expect(screen.getByRole("button", { name: "Create stream" })).toBeInTheDocument();
   });
 
   it("does not render an action when omitted", () => {

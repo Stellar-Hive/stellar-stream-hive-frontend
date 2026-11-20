@@ -38,14 +38,11 @@ describe("useStreams", () => {
     const first = createDeferred<unknown[]>();
     const second = createDeferred<unknown[]>();
 
-    fetchStreamsMock
-      .mockImplementationOnce(() => first.promise)
-      .mockImplementationOnce(() => second.promise);
+    fetchStreamsMock.mockImplementationOnce(() => first.promise).mockImplementationOnce(() => second.promise);
 
-    const { result, rerender } = renderHook(
-      ({ address }: { address: string }) => useStreams(address),
-      { initialProps: { address: "GADDRESS_ONE" } },
-    );
+    const { result, rerender } = renderHook(({ address }: { address: string }) => useStreams(address), {
+      initialProps: { address: "GADDRESS_ONE" },
+    });
 
     // Trigger a second request by changing the address while the first is in flight.
     rerender({ address: "GADDRESS_TWO" });

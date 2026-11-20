@@ -20,6 +20,8 @@ jobs:
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
         continue-on-error: true
+      - name: Format check
+        run: npm run format:check
       - name: Lint
         run: npm run lint
       - name: Typecheck

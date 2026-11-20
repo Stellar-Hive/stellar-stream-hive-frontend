@@ -114,7 +114,7 @@ export function CancelButton({
           withdrawnAmount: BigInt(stream.withdrawnAmount),
           cliffLedger: stream.cliffLedger,
           currentLedger: ledgerSnapshot.ledger,
-        }),
+        })
       );
       setStatus("confirming");
     } catch (err) {
@@ -183,8 +183,14 @@ export function CancelButton({
 
         {split && (status === "confirming" || status === "signing") && (
           <div className="mb-4 space-y-2 rounded-xl border border-border bg-background p-4">
-            <SplitRow label="Recipient receives" value={formatTokenAmount(split.recipientGets, tokenSymbol, tokenDecimals, 7)} />
-            <SplitRow label="Sender refunded" value={formatTokenAmount(split.senderGets, tokenSymbol, tokenDecimals, 7)} />
+            <SplitRow
+              label="Recipient receives"
+              value={formatTokenAmount(split.recipientGets, tokenSymbol, tokenDecimals, 7)}
+            />
+            <SplitRow
+              label="Sender refunded"
+              value={formatTokenAmount(split.senderGets, tokenSymbol, tokenDecimals, 7)}
+            />
           </div>
         )}
 
@@ -195,12 +201,7 @@ export function CancelButton({
               const explorerUrl = stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK);
               return (
                 explorerUrl && (
-                  <a
-                    href={explorerUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-accent underline"
-                  >
+                  <a href={explorerUrl} target="_blank" rel="noreferrer" className="text-sm text-accent underline">
                     View transaction on Stellar Expert
                   </a>
                 )
@@ -246,7 +247,7 @@ const FOCUSABLE_SELECTOR =
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => el.offsetParent !== null || el === document.activeElement,
+    (el) => el.offsetParent !== null || el === document.activeElement
   );
 }
 

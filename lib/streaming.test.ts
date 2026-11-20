@@ -196,9 +196,7 @@ describe("ledger/time estimation", () => {
   });
 
   it("never estimates backwards if the clock skews", () => {
-    expect(
-      estimateCurrentLedger({ lastKnownLedger: 10, lastKnownLedgerTimestampMs: 5_000, nowMs: 1_000 })
-    ).toBe(10);
+    expect(estimateCurrentLedger({ lastKnownLedger: 10, lastKnownLedgerTimestampMs: 5_000, nowMs: 1_000 })).toBe(10);
   });
 
   it("round-trips dates and ledgers", () => {

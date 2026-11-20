@@ -116,11 +116,7 @@ async function invokeContract(
   return { hash, returnValue: result };
 }
 
-async function pollTransaction(
-  server: SorobanRpc.Server,
-  hash: string,
-  timeoutMs: number = 30_000
-): Promise<unknown> {
+async function pollTransaction(server: SorobanRpc.Server, hash: string, timeoutMs: number = 30_000): Promise<unknown> {
   const start = Date.now();
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -231,10 +227,7 @@ export async function withdrawOnChain(params: {
 }
 
 /** Calls cancel_stream on the Stream contract, settling the split between sender and recipient. */
-export async function cancelStreamOnChain(params: {
-  streamId: string;
-  sender: string;
-}): Promise<{ hash: string }> {
+export async function cancelStreamOnChain(params: { streamId: string; sender: string }): Promise<{ hash: string }> {
   const contractId = getStreamContractId();
   // Contract signature: cancel_stream(sender, stream_id)
   const args = [new Address(params.sender).toScVal(), nativeToScVal(BigInt(params.streamId), { type: "u64" })];

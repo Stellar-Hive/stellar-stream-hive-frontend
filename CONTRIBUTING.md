@@ -28,6 +28,21 @@ cp .env.example .env.local
 npm run dev
 ```
 
+### Pre-commit checks
+
+`npm install` sets up a Git pre-commit hook (via [husky](https://typicode.github.io/husky/)).
+On each commit it runs [lint-staged](https://github.com/lint-staged/lint-staged), which only
+touches the files you staged:
+
+- ESLint with `--fix` on staged `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files
+- Prettier on staged code, JSON, Markdown and CSS files
+
+Run the same format check CI runs with `npm run format:check`, or fix formatting with
+`npm run format`.
+
+To commit without the hook (for example, while rebasing), set `HUSKY=0` for that command:
+`HUSKY=0 git commit -m "..."`.
+
 You'll need the [Freighter](https://www.freighter.app/) browser extension to exercise
 wallet-connected flows locally, set to **Testnet**.
 
@@ -35,6 +50,13 @@ Contract-calling features (create/withdraw/cancel a stream) require
 `NEXT_PUBLIC_STREAM_CONTRACT_ID` (and friends) to point at a real deployed contract. If you're
 only working on UI/UX that doesn't touch live contract state, you can leave these unset — the
 app will show a clear "not yet configured" state rather than erroring.
+
+### Dev container (optional)
+
+If you use VS Code or GitHub Codespaces, `.devcontainer/devcontainer.json` gives you a ready
+environment: Node 20 (matching `.nvmrc`), `npm ci` run on create, port 3000 forwarded to the
+Next.js dev server, and the recommended editor extensions from `.vscode/extensions.json`.
+Open the repo and choose **Reopen in Container**.
 
 ## Running against a local API and testnet contracts
 
@@ -108,7 +130,7 @@ these functions are load-bearing for correctness across the whole app.
 
 ## Commit style
 
-Use clear, present-tense commit messages describing *why* a change was made where it's not
+Use clear, present-tense commit messages describing _why_ a change was made where it's not
 obvious from the diff (e.g. `fix: clamp withdrawable to zero before a stream's cliff` rather
 than `fix bug`).
 

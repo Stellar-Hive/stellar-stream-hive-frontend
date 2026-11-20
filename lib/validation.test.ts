@@ -29,15 +29,24 @@ describe("checkAmount", () => {
     // whole numbers are accepted and return base units equal to the integer value
     expect(checkAmount("5", 0)).toEqual({ ok: true, baseUnits: 5n });
     // any fractional part, even '.0', is rejected with the no-decimal-places message
-    expect(checkAmount("5.0", 0)).toEqual({ ok: false, reason: "This token has no decimal places; enter a whole number." });
-    expect(checkAmount("5.1", 0)).toEqual({ ok: false, reason: "This token has no decimal places; enter a whole number." });
+    expect(checkAmount("5.0", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
+    expect(checkAmount("5.1", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
   });
 
   it("rejects more fractional digits than the token supports instead of silently truncating", () => {
     const r = checkAmount("1.123456789", 7);
     expect(r).toEqual({ ok: false, reason: "This token supports at most 7 decimal places." });
     expect(checkAmount("1.1234567", 6).ok).toBe(false);
-    expect(checkAmount("1.5", 0)).toEqual({ ok: false, reason: "This token has no decimal places; enter a whole number." });
+    expect(checkAmount("1.5", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
   });
 
   it("rejects amounts that look positive but are zero in base units", () => {
@@ -126,9 +135,9 @@ describe("isValidStreamId", () => {
 describe("checkAmount — explicit rejection reasons for common invalid formats", () => {
   const cases: [string, string][] = [
     ["0x10", "Enter a valid, non-negative number."],
-    ["1e3",  "Enter a valid, non-negative number."],
+    ["1e3", "Enter a valid, non-negative number."],
     ["1,000", "Enter a valid, non-negative number."],
-    ["+5",  "Enter a valid, non-negative number."],
+    ["+5", "Enter a valid, non-negative number."],
   ];
 
   it.each(cases)("rejects %j with reason %j", (input, expectedReason) => {

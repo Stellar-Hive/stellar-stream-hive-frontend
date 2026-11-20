@@ -131,9 +131,7 @@ export function ScheduleInput({
           <p className="mt-1 text-xs text-muted">{ledgerLabel(endDate)}</p>
         </div>
       </div>
-      {utcOffset && (
-        <p className="text-xs text-muted">Times are in your local timezone ({utcOffset}).</p>
-      )}
+      {utcOffset && <p className="text-xs text-muted">Times are in your local timezone ({utcOffset}).</p>}
 
       <div>
         <label className="flex items-center gap-2 text-sm text-muted">

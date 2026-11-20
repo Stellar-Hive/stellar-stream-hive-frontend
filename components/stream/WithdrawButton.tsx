@@ -92,7 +92,9 @@ export function WithdrawButton({
     setIsFillingMax(true);
     try {
       const actualWithdrawable = await fetchWithdrawableOnChain(streamId);
-      setCustomAmount(formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: tokenDecimals, grouped: false }));
+      setCustomAmount(
+        formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: tokenDecimals, grouped: false })
+      );
     } catch (err) {
       if (err instanceof ContractNotConfiguredError) {
         setError(err.message);
@@ -187,12 +189,7 @@ export function WithdrawButton({
             onChange={(e) => setCustomAmount(e.target.value)}
             className="input-field flex-1"
           />
-          <button
-            type="button"
-            onClick={handleFillMax}
-            disabled={isBusy || isFillingMax}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={handleFillMax} disabled={isBusy || isFillingMax} className="btn-secondary">
             {isFillingMax ? <Spinner size="sm" /> : "Max"}
           </button>
         </div>
@@ -213,12 +210,7 @@ export function WithdrawButton({
             "Confirm withdrawal"
           )}
         </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          disabled={isBusy}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={() => setOpen(false)} disabled={isBusy} className="btn-secondary">
           Cancel
         </button>
       </div>

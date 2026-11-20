@@ -4,7 +4,15 @@
  * and sanitising logic lives in `tokenMetadata.ts`; this file is just the
  * Soroban RPC glue plus a shared per-session cache.
  */
-import { Account, BASE_FEE, Contract, Keypair, TransactionBuilder, rpc as SorobanRpc, scValToNative } from "@stellar/stellar-sdk";
+import {
+  Account,
+  BASE_FEE,
+  Contract,
+  Keypair,
+  TransactionBuilder,
+  rpc as SorobanRpc,
+  scValToNative,
+} from "@stellar/stellar-sdk";
 import { getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./stellar";
 import { createTokenMetadataCache, enrichStreamTokens, type RawTokenMetadata } from "./tokenMetadata";
 import type { Stream, TokenInfo } from "@/types";
@@ -32,7 +40,7 @@ export interface OutgoingSummary {
  */
 export function summarizeOutgoingByToken(
   streams: Stream[],
-  getInfo: (contractId: string) => TokenInfo,
+  getInfo: (contractId: string) => TokenInfo
 ): OutgoingSummary {
   const byToken = new Map<string, OutgoingTokenTotal>();
 

@@ -104,7 +104,15 @@ export function NavBar() {
 
 function HiveLogo() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" className="text-primary" fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      className="text-primary"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    >
       <path d="M12 2 20 6.5v9L12 20 4 15.5v-9L12 2Z" />
       <path d="M12 8 16 10v4l-4 2-4-2v-4l4-2Z" />
     </svg>

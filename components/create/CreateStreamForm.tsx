@@ -8,7 +8,13 @@ import { AmountInput } from "@/components/create/AmountInput";
 import { ScheduleInput } from "@/components/create/ScheduleInput";
 import { StreamPreview } from "@/components/create/StreamPreview";
 import { Spinner } from "@/components/ui/Spinner";
-import { fetchLatestLedgerSnapshot, isValidRecipientAddress, isValidStellarAddress, nativeTokenContractId, STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import {
+  fetchLatestLedgerSnapshot,
+  isValidRecipientAddress,
+  isValidStellarAddress,
+  nativeTokenContractId,
+  STELLAR_EXPERT_NETWORK,
+} from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
 import { checkAmount, checkRecipientNotSender } from "@/lib/validation";
 import { createStreamOnChain, isStreamContractConfigured, ContractNotConfiguredError } from "@/lib/contracts";
@@ -43,7 +49,8 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ streamId: string; hash: string } | null>(null);
 
-  const isRecipientValid = isValidRecipientAddress(recipient) && checkRecipientNotSender(recipient, wallet.publicKey).ok;
+  const isRecipientValid =
+    isValidRecipientAddress(recipient) && checkRecipientNotSender(recipient, wallet.publicKey).ok;
   const amountCheck = checkAmount(amount, token.decimals);
   const isAmountValid = amountCheck.ok;
   const isTokenValid = token.symbol.length > 0 && isValidStellarAddress(token.contractId, "contract");
@@ -151,8 +158,8 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
         {!contractsConfigured && (
           <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-warning">
             The Stream contract isn&apos;t configured for this environment yet (
-            <code className="font-mono text-xs">NEXT_PUBLIC_STREAM_CONTRACT_ID</code>). You can fill out the form
-            to preview a stream, but submitting will be disabled until a contract is deployed and configured.
+            <code className="font-mono text-xs">NEXT_PUBLIC_STREAM_CONTRACT_ID</code>). You can fill out the form to
+            preview a stream, but submitting will be disabled until a contract is deployed and configured.
           </div>
         )}
         <RecipientInput value={recipient} onChange={setRecipient} senderAddress={wallet.publicKey} />
