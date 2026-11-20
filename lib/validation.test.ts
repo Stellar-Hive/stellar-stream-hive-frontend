@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { I128_MAX, checkAmount, checkRecipientNotSender, isValidStreamId } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
-import { groupOutgoingByToken } from "./outgoing";
 
 const base = (input: string, decimals = 7) => {
   const r = checkAmount(input, decimals);

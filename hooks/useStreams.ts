@@ -65,7 +65,6 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
   }, [load]);
 
   const refetch = useCallback(() => load(), [load]);
-=======
 
   return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch };
 }

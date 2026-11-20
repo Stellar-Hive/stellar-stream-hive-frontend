@@ -7,6 +7,8 @@ import { StreamCard } from "@/components/stream/StreamCard";
 import { StreamFilterBar } from "@/components/stream/StreamFilterBar";
 import { RefreshButton } from "@/components/stream/RefreshButton";
 import { TotalWithdrawable } from "@/components/stream/TotalWithdrawable";
+import { CardSkeletonGrid } from "@/components/ui/CardSkeleton";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
@@ -21,7 +23,7 @@ import {
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { fetchWithdrawableOnChain, withdrawOnChain, ContractNotConfiguredError } from "@/lib/contracts";
 import { describeFreighterError } from "@/lib/freighter";
-import { stellarExpertTxUrl } from "@/lib/format";
+import { shortenAddress, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
 
 interface WithdrawAllResult {
@@ -132,7 +134,7 @@ export default function ReceivingPage() {
                   <span className="text-muted">Stream #{r.streamId}</span>
                   {r.hash ? (
                     <a
-                      href={stellarExpertTxUrl(r.hash, STELLAR_EXPERT_NETWORK)}
+                      href={stellarExpertTxUrl(r.hash, STELLAR_EXPERT_NETWORK) ?? undefined}
                       target="_blank"
                       rel="noreferrer"
                       className="text-accent underline"

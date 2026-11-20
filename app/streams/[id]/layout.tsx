@@ -7,14 +7,15 @@ import { isValidStreamId } from "@/lib/validation";
  * `/streams/abc` renders Next's 404 page instead of reaching the API/contract
  * and surfacing a confusing fetch error or a `BigInt` `SyntaxError`.
  */
-export default function StreamDetailLayout({
+export default async function StreamDetailLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  if (!isValidStreamId(params.id)) {
+  const { id } = await params;
+  if (!isValidStreamId(id)) {
     notFound();
   }
 
