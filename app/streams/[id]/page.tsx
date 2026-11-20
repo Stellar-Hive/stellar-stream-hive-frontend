@@ -8,6 +8,7 @@ import { LiveBalance } from "@/components/stream/LiveBalance";
 import { StreamProgress } from "@/components/stream/StreamProgress";
 import { StreamTimeline } from "@/components/stream/StreamTimeline";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
+import { StartsInCountdown } from "@/components/stream/StartsInCountdown";
 import { WithdrawButton } from "@/components/stream/WithdrawButton";
 import { CancelButton } from "@/components/stream/CancelButton";
 import { CopyButton } from "@/components/ui/CopyButton";
@@ -98,6 +99,9 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
       </div>
 
       <div className="card mb-6">
+        {stream.status === "scheduled" ? (
+          <StartsInCountdown startTime={stream.startTime} className="mb-2 block text-sm text-muted" />
+        ) : null}
         <div className="mb-1 flex items-center gap-1 text-xs text-muted">
           <span>Stream #{stream.id}</span>
           <CopyButton value={stream.id} label="Copy ID" />

@@ -11,6 +11,8 @@ export interface UseStreamsResult {
   isLoading: boolean;
   error: string | null;
   apiConfigured: boolean;
+  /** Time (ms) of the last successful fetch for the current address and role, or null if none yet. */
+  lastUpdatedAt: number | null;
   refetch: () => Promise<void>;
 }
 
@@ -26,6 +28,7 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
   const [streams, setStreams] = useState<Stream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const load = useCallback(
     async (isStale: () => boolean = () => false) => {
@@ -43,6 +46,7 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
         const results = role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
         if (isStale()) return;
         setStreams(results);
+        setLastUpdatedAt(Date.now());
       } catch (err) {
         if (isStale()) return;
         // A failed page (including any page after the first in a paged fetch)
@@ -58,6 +62,8 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
 
   useEffect(() => {
     let ignore = false;
+    // A different address or role is a different list, so its freshness starts over.
+    setLastUpdatedAt(null);
     load(() => ignore);
     return () => {
       ignore = true;
@@ -65,7 +71,6 @@ export function useStreams(address: string | null, role: StreamRole): UseStreams
   }, [load]);
 
   const refetch = useCallback(() => load(), [load]);
-=======
 
-  return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch };
+  return { streams, isLoading, error, apiConfigured: isApiConfigured(), lastUpdatedAt, refetch };
 }

@@ -32,7 +32,7 @@ interface WithdrawAllResult {
 
 export default function ReceivingPage() {
   const wallet = useWallet();
-  const { streams, isLoading, error, apiConfigured, refetch } = useStreams(wallet.publicKey, "recipient");
+  const { streams, isLoading, error, apiConfigured, lastUpdatedAt, refetch } = useStreams(wallet.publicKey, "recipient");
   const [filter, setFilter] = useState<StreamFilter>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<StreamSort>("default");
@@ -94,7 +94,7 @@ export default function ReceivingPage() {
           <p className="mt-1 text-muted">Streams where your connected wallet is the recipient.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <RefreshButton onRefresh={refetch} isLoading={isLoading} />
+          <RefreshButton onRefresh={refetch} isLoading={isLoading} lastUpdatedAt={lastUpdatedAt} />
           {withdrawableStreams.length > 0 && (
             <>
               <TotalWithdrawable streams={withdrawableStreams} />

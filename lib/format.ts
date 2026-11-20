@@ -181,3 +181,47 @@ export function formatUtcOffset(date: Date, timeZone?: string): string | null {
     return null;
   }
 }
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Describes how far away `targetMs` is from `nowMs` as a short countdown such
+ * as "3d 4h", "5h 12m", "4m" or "less than a minute". Whole units are floored,
+ * never rounded up. Returns `null` when the target is not in the future or
+ * either timestamp is invalid, so callers can hide the countdown instead of
+ * showing a fabricated value.
+ */
+export function formatTimeUntil(targetMs: number, nowMs: number): string | null {
+  if (!Number.isFinite(targetMs) || !Number.isFinite(nowMs)) return null;
+  const remaining = targetMs - nowMs;
+  if (remaining <= 0) return null;
+  if (remaining < MINUTE_MS) return "less than a minute";
+
+  const days = Math.floor(remaining / DAY_MS);
+  const hours = Math.floor((remaining % DAY_MS) / HOUR_MS);
+  const minutes = Math.floor((remaining % HOUR_MS) / MINUTE_MS);
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+/**
+ * Describes how long ago `thenMs` was relative to `nowMs` as a short label:
+ * "just now" under five seconds, then "30s ago", "5m ago", "2h ago", "3d ago".
+ * Times in the future are treated as "just now".
+ */
+export function formatTimeAgo(thenMs: number, nowMs: number): string {
+  if (!Number.isFinite(thenMs) || !Number.isFinite(nowMs)) return "just now";
+  const elapsed = Math.max(0, nowMs - thenMs);
+  const seconds = Math.floor(elapsed / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
