@@ -7,6 +7,20 @@
  * a JS `number`.
  */
 
+/** Branded type for ledger sequence numbers (distinct from amounts). */
+export type Ledger = number & { readonly __brand: "Ledger" };
+
+/** Branded type for token amounts in base units (distinct from ledger numbers). */
+export type BaseUnits = bigint & { readonly __brand: "BaseUnits" };
+
+export function ledger(n: number): Ledger {
+  return n as Ledger;
+}
+
+export function baseUnits(n: bigint): BaseUnits {
+  return n as BaseUnits;
+}
+
 export type StreamStatus = "scheduled" | "active" | "cliff" | "cancelled" | "completed";
 
 export interface TokenInfo {

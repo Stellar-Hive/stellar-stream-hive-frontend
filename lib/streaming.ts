@@ -8,13 +8,15 @@
  * contract itself floors on division.
  */
 
+import type { Ledger, BaseUnits } from "@/types";
+
 export const AVERAGE_LEDGER_SECONDS = 5;
 
 export interface StreamedAmountParams {
-  totalAmount: bigint;
-  startLedger: number;
-  endLedger: number;
-  currentLedger: number;
+  totalAmount: BaseUnits;
+  startLedger: Ledger;
+  endLedger: Ledger;
+  currentLedger: Ledger;
 }
 
 /**
@@ -32,9 +34,9 @@ export function computeStreamedAmount({
   startLedger,
   endLedger,
   currentLedger,
-}: StreamedAmountParams): bigint {
+}: StreamedAmountParams): BaseUnits {
   if (endLedger <= startLedger) return totalAmount;
-  if (currentLedger <= startLedger) return 0n;
+  if (currentLedger <= startLedger) return 0n as BaseUnits;
 
   const clampedCurrent = Math.min(currentLedger, endLedger);
   const elapsed = BigInt(clampedCurrent - startLedger);
@@ -44,44 +46,44 @@ export function computeStreamedAmount({
   const streamed = (totalAmount * elapsed) / totalDuration;
 
   if (streamed > totalAmount) return totalAmount;
-  if (streamed < 0n) return 0n;
-  return streamed;
+  if (streamed < 0n) return 0n as BaseUnits;
+  return streamed as BaseUnits;
 }
 
 export interface WithdrawableParams extends StreamedAmountParams {
-  withdrawnAmount: bigint;
+  withdrawnAmount: BaseUnits;
   /** If set, no amount is withdrawable before this ledger, even if time has elapsed. */
-  cliffLedger?: number;
+  cliffLedger?: Ledger;
 }
 
 /**
  * Computes the amount currently withdrawable: streamed-to-date minus what has
  * already been withdrawn, respecting an optional cliff.
  */
-export function computeWithdrawable(params: WithdrawableParams): bigint {
+export function computeWithdrawable(params: WithdrawableParams): BaseUnits {
   const { cliffLedger, currentLedger, withdrawnAmount } = params;
 
   if (cliffLedger !== undefined && currentLedger < cliffLedger) {
-    return 0n;
+    return 0n as BaseUnits;
   }
 
   const streamed = computeStreamedAmount(params);
   const withdrawable = streamed - withdrawnAmount;
-  return withdrawable > 0n ? withdrawable : 0n;
+  return withdrawable > 0n ? (withdrawable as BaseUnits) : (0n as BaseUnits);
 }
 
 export interface CancelSplitParams {
-  totalAmount: bigint;
+  totalAmount: BaseUnits;
   /** Amount streamed to date, as computed by `computeStreamedAmount`. */
-  streamedAmount: bigint;
+  streamedAmount: BaseUnits;
   /** If set, nothing is paid to the recipient before this ledger. */
-  cliffLedger?: number;
-  currentLedger: number;
+  cliffLedger?: Ledger;
+  currentLedger: Ledger;
 }
 
 export interface CancelSplit {
-  recipientGets: bigint;
-  senderGets: bigint;
+  recipientGets: BaseUnits;
+  senderGets: BaseUnits;
 }
 
 /**
@@ -98,7 +100,7 @@ export function computeCancelSplit({
   currentLedger,
 }: CancelSplitParams): CancelSplit {
   if (cliffLedger !== undefined && currentLedger < cliffLedger) {
-    return { recipientGets: 0n, senderGets: totalAmount > 0n ? totalAmount : 0n };
+    return { recipientGets: 0n as BaseUnits, senderGets: totalAmount > 0n ? totalAmount : (0n as BaseUnits) };
   }
 
   const recipientGets =
@@ -106,12 +108,12 @@ export function computeCancelSplit({
       ? streamedAmount > totalAmount
         ? totalAmount
         : streamedAmount
-      : 0n;
+      : (0n as BaseUnits);
   const senderGets = totalAmount - recipientGets;
 
   return {
     recipientGets,
-    senderGets: senderGets > 0n ? senderGets : 0n,
+    senderGets: senderGets > 0n ? (senderGets as BaseUnits) : (0n as BaseUnits),
   };
 }
 
@@ -120,9 +122,9 @@ export function computeCancelSplit({
  * bars / timelines. Not clamped to the cliff — this reflects raw time elapsed.
  */
 export function computeProgress(params: {
-  startLedger: number;
-  endLedger: number;
-  currentLedger: number;
+  startLedger: Ledger;
+  endLedger: Ledger;
+  currentLedger: Ledger;
 }): number {
   const { startLedger, endLedger, currentLedger } = params;
   if (endLedger <= startLedger) return 1;
@@ -138,14 +140,14 @@ export function computeProgress(params: {
  * tick; the real value is re-synced from chain periodically.
  */
 export function estimateCurrentLedger(params: {
-  lastKnownLedger: number;
+  lastKnownLedger: Ledger;
   lastKnownLedgerTimestampMs: number;
   nowMs?: number;
-}): number {
+}): Ledger {
   const nowMs = params.nowMs ?? Date.now();
   const secondsSinceSync = Math.max(0, (nowMs - params.lastKnownLedgerTimestampMs) / 1000);
   const ledgersElapsed = Math.floor(secondsSinceSync / AVERAGE_LEDGER_SECONDS);
-  return params.lastKnownLedger + ledgersElapsed;
+  return (params.lastKnownLedger + ledgersElapsed) as Ledger;
 }
 
 /**
@@ -155,17 +157,17 @@ export function estimateCurrentLedger(params: {
  */
 export function dateToEstimatedLedger(
   date: Date,
-  reference: { ledger: number; timestampMs: number }
-): number {
+  reference: { ledger: Ledger; timestampMs: number }
+): Ledger {
   const deltaSeconds = (date.getTime() - reference.timestampMs) / 1000;
   const deltaLedgers = Math.round(deltaSeconds / AVERAGE_LEDGER_SECONDS);
-  return reference.ledger + deltaLedgers;
+  return (reference.ledger + deltaLedgers) as Ledger;
 }
 
 /** Converts a ledger number back into an estimated wall-clock Date. */
 export function ledgerToEstimatedDate(
-  ledger: number,
-  reference: { ledger: number; timestampMs: number }
+  ledger: Ledger,
+  reference: { ledger: Ledger; timestampMs: number }
 ): Date {
   const deltaLedgers = ledger - reference.ledger;
   const deltaMs = deltaLedgers * AVERAGE_LEDGER_SECONDS * 1000;
@@ -173,7 +175,7 @@ export function ledgerToEstimatedDate(
 }
 
 /** Rate of streaming per ledger, expressed as a bigint numerator (amount) / denominator (ledgers). */
-export function computeRatePerSecond(totalAmount: bigint, startLedger: number, endLedger: number): number {
+export function computeRatePerSecond(totalAmount: BaseUnits, startLedger: Ledger, endLedger: Ledger): number {
   const totalDuration = endLedger - startLedger;
   if (totalDuration <= 0) return 0;
   const totalSeconds = totalDuration * AVERAGE_LEDGER_SECONDS;
