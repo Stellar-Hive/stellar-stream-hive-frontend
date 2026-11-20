@@ -106,6 +106,45 @@ logic under `lib/`, add or update a unit test next to it. If you touched `lib/st
 `lib/format.ts`, please also double check the BigInt math with a couple of manual examples —
 these functions are load-bearing for correctness across the whole app.
 
+## Testing with MSW (Mock Service Worker)
+
+Tests that touch the API client use MSW to intercept fetch calls without needing a running
+server. Handlers are defined in `lib/testing/handlers.ts` and automatically enabled in all
+tests via `vitest.setup.ts`.
+
+Reuse the handlers in new tests:
+
+```typescript
+import { setupServer } from "msw/node";
+import { apiHandlers, fixtureStreams, fixtureStats } from "@/lib/testing/handlers";
+
+// In your test file:
+const server = setupServer(...apiHandlers);
+
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+it("fetches stats from the API", async () => {
+  const stats = await fetchPlatformStats();
+  expect(stats?.totalStreams).toBe(fixtureStats.total_streams);
+});
+
+// Override a handler for a specific test:
+it("handles API errors", async () => {
+  server.use(
+    http.get("https://api.test.local/stats", () => {
+      return HttpResponse.error();
+    })
+  );
+  const stats = await fetchPlatformStats();
+  expect(stats).toBeNull();
+});
+```
+
+The fixture data (in `fixtureStreams`, `fixtureStats`) uses realistic base-unit amounts as
+decimal strings. All amounts are floored, never rounded.
+
 ## Commit style
 
 Use clear, present-tense commit messages describing *why* a change was made where it's not

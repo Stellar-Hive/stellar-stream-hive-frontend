@@ -101,6 +101,11 @@ See [`.env.example`](./.env.example) for the full, documented list. In short:
 - `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
   platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
   graceful empty/loading state rather than fabricating numbers.
+- `NEXT_PUBLIC_MOCK_DATA` — opt-in flag (development-only) to serve realistic fixture streams
+  instead of making real API calls. Set to `1` to enable. The UI is clearly labeled as showing
+  mock data. Only available in development and preview builds; automatically disabled in
+  production. Useful for new contributors to see all stream states without deploying contracts
+  or funding wallets.
 - `NEXT_PUBLIC_SITE_URL` — public base URL this app is deployed at, used for `metadataBase`
   (Open Graph URLs) in `app/layout.tsx` and for the generated sitemap in `app/sitemap.ts`.
   Defaults to `http://localhost:3000`; set it to your real deployment URL in production so
