@@ -143,3 +143,67 @@ describe("NETWORK validation", () => {
     warnSpy.mockRestore();
   });
 });
+
+// === Explorer URL matrix
+describe("explorer URL matrix", () => {
+  const ACCOUNT = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
+  const CONTRACT = TESTNET_CONTRACT_ID;
+  const TX_HASH = "a".repeat(64);
+
+  const matrix = [
+    { network: "TESTNET", slug: "testnet" },
+    { network: "PUBLIC", slug: "public" },
+    { network: "FUTURENET", slug: null },
+  ] as const;
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function loadForNetwork(network: string) {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", network);
+    vi.resetModules();
+    const { STELLAR_EXPERT_NETWORK } = await import("./stellar");
+    const { stellarExpertAccountUrl, stellarExpertTxUrl } = await import("./format");
+    return { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl };
+  }
+
+  it.each(matrix)("builds $network links for accounts, contracts and transactions", async ({ network, slug }) => {
+    const { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl } = await loadForNetwork(network);
+
+    expect(STELLAR_EXPERT_NETWORK).toBe(slug);
+
+    if (slug === null) {
+      expect(stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK)).toBeNull();
+      expect(stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK)).toBeNull();
+      expect(stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK)).toBeNull();
+      return;
+    }
+
+    expect(stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/account/${ACCOUNT}`,
+    );
+    expect(stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/contract/${CONTRACT}`,
+    );
+    expect(stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/tx/${TX_HASH}`,
+    );
+  });
+
+  it("never points PUBLIC links at testnet", async () => {
+    const { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl } = await loadForNetwork("PUBLIC");
+
+    const urls = [
+      stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK),
+      stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK),
+      stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK),
+    ];
+
+    for (const url of urls) {
+      expect(url).not.toBeNull();
+      expect(url).not.toContain("/testnet/");
+    }
+  });
+});

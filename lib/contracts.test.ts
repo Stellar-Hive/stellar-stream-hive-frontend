@@ -1,9 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { Keypair } from "@stellar/stellar-sdk";
 import {
   ContractNotConfiguredError,
   getStreamContractId,
   isStreamContractConfigured,
+  withdrawOnChain,
 } from "./contracts";
+import { UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
+
+const { getAccount } = vi.hoisted(() => ({ getAccount: vi.fn() }));
+
+vi.mock("./stellar", () => ({
+  getSorobanServer: () => ({ getAccount }),
+  fetchLatestLedgerSnapshot: vi.fn(async () => null),
+  nativeTokenContractId: () => "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+  NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
+}));
 
 describe("getStreamContractId", () => {
   const original = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;
@@ -69,5 +81,39 @@ describe("isStreamContractConfigured", () => {
   it("returns true when the env var is set", () => {
     process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID = "CABC123";
     expect(isStreamContractConfigured()).toBe(true);
+  });
+});
+
+describe("withdrawOnChain with an unfunded wallet", () => {
+  const original = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;
+  const recipient = Keypair.random().publicKey();
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+    getAccount.mockReset();
+  });
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;
+    } else {
+      process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID = original;
+    }
+  });
+
+  it("tells the user to fund a wallet the network does not know", async () => {
+    getAccount.mockRejectedValueOnce(new Error(`Account not found: ${recipient}`));
+
+    await expect(
+      withdrawOnChain({ streamId: "1", recipient, amount: 1n }),
+    ).rejects.toThrow(UNFUNDED_ACCOUNT_MESSAGE);
+  });
+
+  it("passes other RPC errors through unchanged", async () => {
+    getAccount.mockRejectedValueOnce(new Error("Network Error"));
+
+    await expect(
+      withdrawOnChain({ streamId: "1", recipient, amount: 1n }),
+    ).rejects.toThrow("Network Error");
   });
 });

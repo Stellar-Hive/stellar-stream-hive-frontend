@@ -24,6 +24,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { fetchLatestLedgerSnapshot, getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./stellar";
 import { signWithFreighter } from "./freighter";
+import { isUnfundedAccountError, UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
 import { makeTokenResolver, mapRawStream, type RawStreamRecord } from "./streamMapping";
 import { withTokenMetadata } from "./tokens";
 import type { Stream } from "@/types";
@@ -87,7 +88,11 @@ async function invokeContract(
 ): Promise<{ hash: string; returnValue: unknown }> {
   const server = getSorobanServer();
   const contract = new Contract(contractId);
-  const account = await server.getAccount(sourcePublicKey);
+  const account = await server.getAccount(sourcePublicKey).catch((err: unknown) => {
+    const raw = err instanceof Error ? err.message : String(err);
+    if (isUnfundedAccountError(raw)) throw new Error(UNFUNDED_ACCOUNT_MESSAGE);
+    throw err;
+  });
 
   const tx = new TransactionBuilder(account, {
     fee: BASE_FEE,

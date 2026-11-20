@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { describeContractError } from "./contractErrors";
+import {
+  describeContractError,
+  describeRpcError,
+  isUnfundedAccountError,
+  UNFUNDED_ACCOUNT_MESSAGE,
+} from "./contractErrors";
 
 describe("describeContractError", () => {
   it("maps #13 Paused to a friendly message", () => {
@@ -33,5 +38,36 @@ describe("describeContractError", () => {
   it("returns null for non-string input", () => {
     // @ts-expect-error intentionally testing a non-string input
     expect(describeContractError(undefined)).toBeNull();
+  });
+});
+
+describe("describeRpcError", () => {
+  it.each([
+    ["Network Error", "We couldn't reach the Stellar network. Check your connection and try again."],
+    ["tx_bad_seq", "Your transaction's sequence number is out of date. Try again."],
+    ["tx_insufficient_fee", "The network fee was too low. Try again."],
+    ["Account not found: GABC", UNFUNDED_ACCOUNT_MESSAGE],
+    ["429 Too Many Requests", "The network is busy right now. Wait a moment and try again."],
+  ])("maps %s to a friendly message and keeps the raw text in details", (raw, friendly) => {
+    expect(describeRpcError(raw)).toEqual({ message: friendly, details: raw });
+  });
+
+  it("returns null for an unrecognized failure", () => {
+    expect(describeRpcError("Something unexpected happened")).toBeNull();
+  });
+
+  it("returns null for non-string input", () => {
+    // @ts-expect-error intentionally testing a non-string input
+    expect(describeRpcError(undefined)).toBeNull();
+  });
+});
+
+describe("isUnfundedAccountError", () => {
+  it("matches the RPC account-not-found message", () => {
+    expect(isUnfundedAccountError("Account not found: GABC")).toBe(true);
+  });
+
+  it("does not match network failures", () => {
+    expect(isUnfundedAccountError("Network Error")).toBe(false);
   });
 });

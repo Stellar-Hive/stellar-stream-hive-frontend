@@ -2,6 +2,7 @@ import { NETWORK, STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
 
 export function Footer() {
   const streamContractId = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;
+  const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL;
 
   return (
     <footer className="border-t border-border">
@@ -27,6 +28,17 @@ export function Footer() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {docsUrl && (
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-white"
+            >
+              Docs
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          )}
           <a
             href="https://github.com/Stellar-Hive/stellar-stream-hive-contract"
             target="_blank"
