@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
 import { NetworkBadge } from "@/components/wallet/NetworkBadge";
+import { NETWORK_NOTICE_LABEL } from "@/lib/stellar";
 
 const LINKS = [
   { href: "/streams/new", label: "Create Stream" },
@@ -40,6 +41,14 @@ export function NavBar() {
           <HiveLogo />
           <span className="hidden sm:inline">Stellar Stream Hive</span>
         </Link>
+        {NETWORK_NOTICE_LABEL && (
+          <span
+            className="whitespace-nowrap rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning"
+            title={`This app runs on ${NETWORK_NOTICE_LABEL}. Tokens here have no real-world value.`}
+          >
+            {NETWORK_NOTICE_LABEL}
+          </span>
+        )}
 
         <nav className="hidden items-center gap-1 md:flex">
           {LINKS.map((link) => (

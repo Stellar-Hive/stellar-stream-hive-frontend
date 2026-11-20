@@ -66,11 +66,12 @@ export function ConnectButton() {
       <a
         href="https://www.freighter.app/"
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         className="btn-secondary text-sm"
         title="Freighter wallet extension is required"
       >
         Install Freighter
+        <span className="sr-only"> (opens in a new tab)</span>
       </a>
     );
   }

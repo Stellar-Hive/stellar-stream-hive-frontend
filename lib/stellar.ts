@@ -27,6 +27,17 @@ function resolveNetwork(raw: string | undefined): StellarNetwork {
 
 export const NETWORK = resolveNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK);
 
+/**
+ * Label shown in the UI when the app is not on mainnet, so users cannot mistake
+ * testnet streams for real money. Returns null on PUBLIC (mainnet).
+ */
+export function networkNoticeLabel(network: string): string | null {
+  if (network === "PUBLIC") return null;
+  return network.charAt(0).toUpperCase() + network.slice(1).toLowerCase();
+}
+
+export const NETWORK_NOTICE_LABEL = networkNoticeLabel(NETWORK);
+
 export const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ||
   (NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET);

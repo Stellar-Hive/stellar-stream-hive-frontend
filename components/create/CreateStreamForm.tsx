@@ -117,10 +117,11 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
               <a
                 href={explorerUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="mt-3 inline-block text-sm text-accent underline"
               >
                 View transaction on Stellar Expert
+                <span className="sr-only"> (opens in a new tab)</span>
               </a>
             )
           );

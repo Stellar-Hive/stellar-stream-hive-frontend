@@ -134,10 +134,11 @@ export default function ReceivingPage() {
                     <a
                       href={stellarExpertTxUrl(r.hash, STELLAR_EXPERT_NETWORK)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-accent underline"
                     >
                       View transaction
+                      <span className="sr-only"> (opens in a new tab)</span>
                     </a>
                   ) : (
                     <span className="text-danger">{r.error}</span>

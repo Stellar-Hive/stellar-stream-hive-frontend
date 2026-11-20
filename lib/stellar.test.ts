@@ -143,3 +143,16 @@ describe("NETWORK validation", () => {
     warnSpy.mockRestore();
   });
 });
+
+describe("networkNoticeLabel", () => {
+  it("returns no label on mainnet", async () => {
+    const { networkNoticeLabel } = await import("./stellar");
+    expect(networkNoticeLabel("PUBLIC")).toBeNull();
+  });
+
+  it("labels non-mainnet networks in title case", async () => {
+    const { networkNoticeLabel } = await import("./stellar");
+    expect(networkNoticeLabel("TESTNET")).toBe("Testnet");
+    expect(networkNoticeLabel("FUTURENET")).toBe("Futurenet");
+  });
+});

@@ -170,7 +170,7 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
               <a
                 href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-accent underline"
               >
                 View on Stellar Expert
@@ -184,7 +184,7 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
               <a
                 href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)!}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-accent underline"
               >
                 View on Stellar Expert
@@ -234,7 +234,7 @@ function AddressRow({ label, address }: { label: string; address: string }) {
             <a
               href={explorerUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-accent underline"
             >
               {shortenAddress(address)}

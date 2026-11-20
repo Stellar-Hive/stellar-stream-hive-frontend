@@ -5,17 +5,20 @@ import { NavBar } from "@/components/layout/NavBar";
 import { Footer } from "@/components/layout/Footer";
 import { MAIN_CONTENT_ID, SkipLink } from "@/components/layout/SkipLink";
 import { WalletProvider } from "@/components/wallet/WalletProvider";
+import { isNoindexEnabled } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const NOINDEX = isNoindexEnabled(process.env.NEXT_PUBLIC_NOINDEX);
 
 export const metadata: Metadata = {
   title: "Stellar Stream Hive — Stream payments by the second",
   description:
     "Create real-time payment streams on Stellar. Employers stream salaries by the second; recipients watch balances accrue live and withdraw whenever they want.",
   metadataBase: new URL(SITE_URL),
+  robots: NOINDEX ? { index: false, follow: false } : undefined,
   openGraph: {
     title: "Stellar Stream Hive",
     description: "Stream payments by the second on Stellar.",

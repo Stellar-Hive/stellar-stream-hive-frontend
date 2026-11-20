@@ -198,10 +198,11 @@ export function CancelButton({
                   <a
                     href={explorerUrl}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="text-sm text-accent underline"
                   >
                     View transaction on Stellar Expert
+                    <span className="sr-only"> (opens in a new tab)</span>
                   </a>
                 )
               );
