@@ -7,6 +7,7 @@ import { computeCancelSplit, computeStreamedAmount } from "@/lib/streaming";
 import { describeFreighterError } from "@/lib/freighter";
 import { formatTokenAmount, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 
 type Status = "idle" | "loadingSplit" | "confirming" | "signing" | "success" | "error";
@@ -148,9 +149,9 @@ export function CancelButton({
 
   if (!open) {
     return (
-      <button type="button" ref={triggerRef} onClick={openModal} className="btn-danger">
+      <Button ref={triggerRef} variant="danger" onClick={openModal}>
         Cancel stream
-      </button>
+      </Button>
     );
   }
 
@@ -211,28 +212,23 @@ export function CancelButton({
 
         <div className="flex gap-2">
           {status === "success" ? (
-            <button type="button" onClick={close} className="btn-secondary flex-1">
+            <Button variant="secondary" className="flex-1" onClick={close}>
               Close
-            </button>
+            </Button>
           ) : (
             <>
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                className="flex-1"
                 onClick={handleConfirm}
                 disabled={status !== "confirming"}
-                className="btn-danger flex-1"
+                isLoading={status === "signing"}
               >
-                {status === "signing" ? (
-                  <>
-                    <Spinner size="sm" /> Confirm in wallet…
-                  </>
-                ) : (
-                  "Yes, cancel stream"
-                )}
-              </button>
-              <button type="button" onClick={close} disabled={status === "signing"} className="btn-secondary flex-1">
+                {status === "signing" ? "Confirm in wallet…" : "Yes, cancel stream"}
+              </Button>
+              <Button variant="secondary" className="flex-1" onClick={close} disabled={status === "signing"}>
                 Keep streaming
-              </button>
+              </Button>
             </>
           )}
         </div>

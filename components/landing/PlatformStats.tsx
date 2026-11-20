@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchPlatformStats, isApiConfigured } from "@/lib/api";
+import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import type { PlatformStats } from "@/types";
 
@@ -67,9 +68,9 @@ export function PlatformStats() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card text-center">
+    <Card className="text-center">
       <p className="mono-tabular text-3xl font-bold text-primary">{value}</p>
       <p className="mt-1 text-sm text-muted">{label}</p>
-    </div>
+    </Card>
   );
 }

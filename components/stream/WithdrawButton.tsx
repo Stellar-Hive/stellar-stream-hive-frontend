@@ -6,6 +6,7 @@ import { describeFreighterError } from "@/lib/freighter";
 import { formatBaseUnits, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
 import { checkAmount } from "@/lib/validation";
+import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 
 type Status = "idle" | "checking" | "signing" | "submitting" | "success" | "error";
@@ -106,9 +107,9 @@ export function WithdrawButton({
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-primary">
+      <Button onClick={() => setOpen(true)}>
         Withdraw
-      </button>
+      </Button>
     );
   }
 
@@ -131,9 +132,9 @@ export function WithdrawButton({
             )
           );
         })()}
-        <button
-          type="button"
-          className="btn-secondary mt-4 w-full"
+        <Button
+          variant="secondary"
+          className="mt-4 w-full"
           onClick={() => {
             setOpen(false);
             setStatus("idle");
@@ -143,7 +144,7 @@ export function WithdrawButton({
           }}
         >
           Close
-        </button>
+        </Button>
       </div>
     );
   }
@@ -187,40 +188,39 @@ export function WithdrawButton({
             onChange={(e) => setCustomAmount(e.target.value)}
             className="input-field flex-1"
           />
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={handleFillMax}
             disabled={isBusy || isFillingMax}
-            className="btn-secondary"
+            isLoading={isFillingMax}
           >
-            {isFillingMax ? <Spinner size="sm" /> : "Max"}
-          </button>
+            Max
+          </Button>
         </div>
       )}
 
       {error && <p className="mb-3 text-sm text-danger">{error}</p>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={handleWithdraw} disabled={isBusy} className="btn-primary flex-1">
-          {isBusy ? (
-            <>
-              <Spinner size="sm" decorative />
-              {status === "checking" && "Checking on-chain balance…"}
-              {status === "signing" && "Confirm in wallet…"}
-              {status === "submitting" && "Submitting…"}
-            </>
-          ) : (
-            "Confirm withdrawal"
-          )}
-        </button>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          className="flex-1"
+          onClick={handleWithdraw}
+          disabled={isBusy}
+          isLoading={isBusy}
+        >
+          {status === "checking" && "Checking on-chain balance…"}
+          {status === "signing" && "Confirm in wallet…"}
+          {status === "submitting" && "Submitting…"}
+          {!isBusy && "Confirm withdrawal"}
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => setOpen(false)}
           disabled={isBusy}
-          className="btn-secondary"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

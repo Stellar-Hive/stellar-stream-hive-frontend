@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useAsync } from "@/hooks/useAsync";
 import { fetchStreamsByRecipient, fetchStreamsBySender, isApiConfigured } from "@/lib/api";
 import type { Stream } from "@/types";
 
@@ -23,49 +23,19 @@ export interface UseStreamsResult {
  * false so the page can explain why instead of pretending there's no data.
  */
 export function useStreams(address: string | null, role: StreamRole): UseStreamsResult {
-  const [streams, setStreams] = useState<Stream[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(
-    async (isStale: () => boolean = () => false) => {
+  const result = useAsync(
+    async (isStale: () => boolean) => {
       if (!address) {
-        if (!isStale()) {
-          setStreams([]);
-          setIsLoading(false);
-        }
-        return;
+        return [];
       }
 
-      setIsLoading(true);
-      setError(null);
-      try {
-        const results = role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
-        if (isStale()) return;
-        setStreams(results);
-      } catch (err) {
-        if (isStale()) return;
-        // A failed page (including any page after the first in a paged fetch)
-        // rejects the whole request, so we never keep a partial list around.
-        setError(err instanceof Error ? err.message : "Failed to load streams.");
-        setStreams([]);
-      } finally {
-        if (!isStale()) setIsLoading(false);
-      }
+      const streams =
+        role === "sender" ? await fetchStreamsBySender(address) : await fetchStreamsByRecipient(address);
+      if (isStale()) return null;
+      return streams;
     },
     [address, role],
   );
 
-  useEffect(() => {
-    let ignore = false;
-    load(() => ignore);
-    return () => {
-      ignore = true;
-    };
-  }, [load]);
-
-  const refetch = useCallback(() => load(), [load]);
-=======
-
-  return { streams, isLoading, error, apiConfigured: isApiConfigured(), refetch };
+  return { streams: result.data ?? [], isLoading: result.isLoading, error: result.error, apiConfigured: isApiConfigured(), refetch: result.refetch };
 }

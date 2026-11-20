@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import type { Stream } from "@/types";
 import { formatTokenAmount, shortenAddress } from "@/lib/format";
 import { computeProgress } from "@/lib/streaming";
+import { Card } from "@/components/ui/Card";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
 import { LiveBalance } from "@/components/stream/LiveBalance";
 import { CopyButton } from "@/components/ui/CopyButton";
@@ -40,7 +41,7 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
     : null;
 
   return (
-    <div className="card flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted">{counterpartLabel}</p>
@@ -118,6 +119,6 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
         </Link>
         {actions}
       </div>
-    </div>
+    </Card>
   );
 }
