@@ -53,15 +53,14 @@ for a transaction.
 | `lint` | Run ESLint |
 | `typecheck` | Run the TypeScript compiler with `--noEmit` |
 | `test` | Run Vitest once |
-| `test:watch` | Run Vitest in watch mode |
+| `test:coverage` | Run Vitest once with coverage reporting |
 
 ## Tech stack
 
-- [Next.js 14](https://nextjs.org/) (App Router) + TypeScript
+- [Next.js 15](https://nextjs.org/) (App Router) + [React 19](https://react.dev/) + TypeScript
 - [Tailwind CSS](https://tailwindcss.com/) (dark mode by default)
-- [`@stellar/stellar-sdk`](https://github.com/stellar/js-stellar-sdk) for building/simulating/submitting Soroban transactions
+- [`@stellar/stellar-sdk`](https://github.com/stellar/js-stellar-sdk) 13.1.0 for building/simulating/submitting Soroban transactions
 - [`@stellar/freighter-api`](https://github.com/stellar/freighter) for wallet connection and signing
-- [Recharts](https://recharts.org/) for data visualization
 - [date-fns](https://date-fns.org/) for date formatting
 
 ## Getting started
@@ -84,7 +83,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint` | Runs ESLint with the `next/core-web-vitals` rules |
 | `npm run typecheck` | Runs `tsc --noEmit` in strict mode |
 | `npm test` | Runs the Vitest unit tests once |
-| `npm run test:watch` | Runs the Vitest unit tests and re-runs them on every file change |
+| `npm run test:coverage` | Runs the Vitest unit tests once and reports coverage |
 
 ## Environment variables
 
@@ -108,6 +107,9 @@ See [`.env.example`](./.env.example) for the full, documented list. In short:
 
 ## Project structure
 
+For how these layers depend on each other and where each data source comes from, see
+[`docs/architecture.md`](./docs/architecture.md).
+
 ```
 app/
   page.tsx                    Landing page (hero, no-wallet live demo, platform stats)
@@ -126,8 +128,11 @@ hooks/
   useWallet.ts                Freighter connection state
   useLiveBalance.ts           The per-second ticking balance hook
   useStream.ts / useStreams.ts  Data loading for one stream / lists of streams
+  useLedgerSnapshot.ts        Latest-ledger snapshot used by the live balance
 lib/
   contracts.ts                Soroban contract call helpers (create/withdraw/cancel)
+  contractErrors.ts           Maps contract error codes to friendly messages
+  constants.ts                Shared constants (e.g. the balance tick interval)
   freighter.ts                Freighter API wrapper with normalized error handling
   stellar.ts                  Network config, RPC client, address validation
   streaming.ts                Client-side streamed-amount math (mirrors the contract)
@@ -138,7 +143,7 @@ lib/
   tokenMetadata.ts            Token metadata (symbol, decimals) loading and caching
   streamMapping.ts            Mapping indexer API and contract responses into `Stream`
   streamList.ts               Status filters and CSV export for stream lists
-types/index.ts                 Shared domain types
+types/index.ts                Shared domain types
 ```
 
 ## Verifying the build
@@ -188,7 +193,7 @@ MIT
 ```bash
 npm run lint        # ESLint (next/core-web-vitals)
 npm run typecheck   # tsc --noEmit, strict mode
-npm test            # Vitest unit tests (watch mode: npm run test:watch)
+npm test            # Vitest unit tests once (with coverage: npm run test:coverage)
 npm run build       # production build
 ```
 
