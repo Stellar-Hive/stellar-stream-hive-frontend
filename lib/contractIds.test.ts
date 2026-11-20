@@ -3,7 +3,7 @@ import {
   ContractNotConfiguredError,
   getStreamContractId,
   isStreamContractConfigured,
-} from "./contracts";
+} from "./contractIds";
 
 describe("getStreamContractId", () => {
   const original = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;

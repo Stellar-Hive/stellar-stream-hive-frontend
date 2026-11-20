@@ -7,6 +7,8 @@
  * a string, and we always floor rather than round up.
  */
 
+import type { BaseUnits } from "@/types";
+
 export const STROOP_DECIMALS = 7;
 
 /** 10^decimals, as a BigInt, for fixed-point conversions. */
@@ -18,7 +20,7 @@ export function decimalsFactor(decimals: number = STROOP_DECIMALS): bigint {
  * Converts a human-entered decimal string (e.g. "1234.5000000") into base
  * units (BigInt), flooring any excess precision rather than rounding.
  */
-export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_DECIMALS): bigint {
+export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_DECIMALS): BaseUnits {
   const trimmed = input.trim();
   const negative = trimmed.startsWith("-");
   if (negative) throw new Error("Amount must not be negative");
@@ -31,7 +33,7 @@ export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_
   const frac = fracRaw.slice(0, decimals).padEnd(decimals, "0");
 
   const factor = decimalsFactor(decimals);
-  return BigInt(whole) * factor + BigInt(frac === "" ? "0" : frac);
+  return (BigInt(whole) * factor + BigInt(frac === "" ? "0" : frac)) as BaseUnits;
 }
 
 /**
@@ -40,7 +42,7 @@ export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_
  * zeros unless `minDecimals` is given.
  */
 export function formatBaseUnits(
-  amount: bigint,
+  amount: BaseUnits,
   decimals: number = STROOP_DECIMALS,
   options: { maxDecimals?: number; minDecimals?: number; grouped?: boolean } = {}
 ): string {
@@ -78,7 +80,7 @@ function groupThousands(digits: string): string {
 
 /** Formats a base-unit amount with a trailing token symbol, e.g. "12.3456789 XLM". */
 export function formatTokenAmount(
-  amount: bigint,
+  amount: BaseUnits,
   symbol: string,
   decimals: number = STROOP_DECIMALS,
   maxDecimals: number = decimals
@@ -137,15 +139,15 @@ export function formatRate(amountPerSecond: number, symbol: string): { perSecond
  * correctly display as "0" rather than a fabricated fractional value.
  */
 export function formatRateFromBaseUnits(
-  totalAmount: bigint,
+  totalAmount: BaseUnits,
   totalSeconds: number,
   symbol: string,
   decimals: number = STROOP_DECIMALS
 ): { perSecond: string; perHour: string; perDay: string } {
   const zero = {
-    perSecond: formatTokenAmount(0n, symbol, decimals, decimals),
-    perHour: formatTokenAmount(0n, symbol, decimals, decimals),
-    perDay: formatTokenAmount(0n, symbol, decimals, decimals),
+    perSecond: formatTokenAmount(0n as BaseUnits, symbol, decimals, decimals),
+    perHour: formatTokenAmount(0n as BaseUnits, symbol, decimals, decimals),
+    perDay: formatTokenAmount(0n as BaseUnits, symbol, decimals, decimals),
   };
   if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return zero;
 
@@ -157,9 +159,9 @@ export function formatRateFromBaseUnits(
   const perDay = (totalAmount * 86400n) / secondsBig;
 
   return {
-    perSecond: formatTokenAmount(perSecond, symbol, decimals, decimals),
-    perHour: formatTokenAmount(perHour, symbol, decimals, decimals),
-    perDay: formatTokenAmount(perDay, symbol, decimals, decimals),
+    perSecond: formatTokenAmount(perSecond as BaseUnits, symbol, decimals, decimals),
+    perHour: formatTokenAmount(perHour as BaseUnits, symbol, decimals, decimals),
+    perDay: formatTokenAmount(perDay as BaseUnits, symbol, decimals, decimals),
   };
 }
 
