@@ -47,6 +47,10 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  // Aborted on unmount so a transaction that is still being polled stops
+  // polling and does not set state on an unmounted component.
+  const pollAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => pollAbortRef.current?.abort(), []);
   const [result, setResult] = useState<{ streamId: string; hash: string } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -123,6 +127,8 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
     setShowSummary(false);
     setError(null);
     setStatus("creating");
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     try {
       const reference = await fetchLatestLedgerSnapshot();
       const startLedger = dateToEstimatedLedger(startDate, reference);
@@ -144,11 +150,16 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
         endLedger,
         cliffLedger,
         cancellable,
+        signal: controller.signal,
       });
+
+      if (controller.signal.aborted) return;
 
       setResult(created);
       setStatus("success");
     } catch (err) {
+      // Unmounted while polling: the transaction was sent, but there is nothing left to update.
+      if (controller.signal.aborted) return;
       setError(err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err));
       setStatus("error");
     }

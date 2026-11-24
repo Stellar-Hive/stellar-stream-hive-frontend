@@ -87,7 +87,8 @@ async function invokeContract(
   method: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[],
-  sourcePublicKey: string
+  sourcePublicKey: string,
+  signal?: AbortSignal
 ): Promise<{ hash: string; returnValue: unknown }> {
   const { Contract, TransactionBuilder, BASE_FEE } = await getSdk();
   const server = getSorobanServer();
@@ -122,7 +123,7 @@ async function invokeContract(
   }
 
   const hash = sendResult.hash;
-  const result = await pollTransaction(server, hash);
+  const result = await pollTransaction(server, hash, { signal });
   return { hash, returnValue: result };
 }
 
@@ -141,15 +142,51 @@ export function nextPollDelay(attempt: number): number {
   return Math.min(POLL_MAX_DELAY_MS, POLL_INITIAL_DELAY_MS + attempt * POLL_DELAY_STEP_MS);
 }
 
+/**
+ * Thrown when polling is cancelled (for example the component unmounted). The
+ * transaction was already submitted and may still confirm, so the error carries
+ * its hash instead of pretending nothing was sent.
+ */
+export class TransactionPollAbortedError extends Error {
+  constructor(public readonly hash: string) {
+    super(`Stopped waiting for confirmation. Transaction ${hash} was submitted and may still confirm.`);
+    this.name = "TransactionPollAbortedError";
+  }
+}
+
+export interface PollOptions {
+  /** How long to wait for confirmation before giving up. Default 30 seconds. */
+  timeoutMs?: number;
+  /** Abort to stop polling; the poll then rejects with {@link TransactionPollAbortedError}. */
+  signal?: AbortSignal;
+}
+
+/** Resolves after `ms`, or as soon as `signal` aborts (whichever comes first). */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const timer = setTimeout(done, ms);
+    function done() {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    }
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
+
 export async function pollTransaction(
   server: SorobanRpcType.Server,
   hash: string,
-  timeoutMs: number = 30_000
+  options: PollOptions = {}
 ): Promise<unknown> {
+  const { timeoutMs = 30_000, signal } = options;
   const { scValToNative } = await getSdk();
   const start = Date.now();
 
   for (let attempt = 0; ; attempt++) {
+    if (signal?.aborted) throw new TransactionPollAbortedError(hash);
+
     let response;
     try {
       response = await server.getTransaction(hash);
@@ -175,7 +212,7 @@ export async function pollTransaction(
     if (Date.now() - start > timeoutMs) {
       throw new Error("Timed out waiting for transaction confirmation.");
     }
-    await new Promise((resolve) => setTimeout(resolve, nextPollDelay(attempt)));
+    await sleep(nextPollDelay(attempt), signal);
   }
 }
 
@@ -237,6 +274,8 @@ export async function createStreamOnChain(params: {
   endLedger: number;
   cliffLedger?: number;
   cancellable: boolean;
+  /** Abort to stop waiting for confirmation (the transaction itself is not recalled). */
+  signal?: AbortSignal;
 }): Promise<{ streamId: string; hash: string }> {
   const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
@@ -252,7 +291,13 @@ export async function createStreamOnChain(params: {
     nativeToScVal(params.cancellable, { type: "bool" }),
   ];
 
-  const { hash, returnValue } = await invokeContract(contractId, "create_stream", args, params.sender);
+  const { hash, returnValue } = await invokeContract(
+    contractId,
+    "create_stream",
+    args,
+    params.sender,
+    params.signal
+  );
   const streamId = typeof returnValue === "bigint" ? returnValue.toString() : String(returnValue);
   return { streamId, hash };
 }
@@ -262,6 +307,7 @@ export async function withdrawOnChain(params: {
   streamId: string;
   recipient: string;
   amount: bigint;
+  signal?: AbortSignal;
 }): Promise<{ hash: string }> {
   const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
@@ -271,16 +317,21 @@ export async function withdrawOnChain(params: {
     nativeToScVal(BigInt(params.streamId), { type: "u64" }),
     nativeToScVal(params.amount, { type: "i128" }),
   ];
-  const { hash } = await invokeContract(contractId, "withdraw", args, params.recipient);
+  const { hash } = await invokeContract(contractId, "withdraw", args, params.recipient, params.signal);
   return { hash };
 }
 
 /** Calls cancel_stream on the Stream contract, settling the split between sender and recipient. */
-export async function cancelStreamOnChain(params: { streamId: string; sender: string }): Promise<{ hash: string }> {
+export async function cancelStreamOnChain(params: {
+  streamId: string;
+  sender: string;
+  signal?: AbortSignal;
+}): Promise<{ hash: string }> {
+  const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
   // Contract signature: cancel_stream(sender, stream_id)
   const args = [new Address(params.sender).toScVal(), nativeToScVal(BigInt(params.streamId), { type: "u64" })];
-  const { hash } = await invokeContract(contractId, "cancel_stream", args, params.sender);
+  const { hash } = await invokeContract(contractId, "cancel_stream", args, params.sender, params.signal);
   return { hash };
 }
 
