@@ -131,6 +131,8 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
     setError(null);
     setTimedOutHash(null);
     setStatus("creating");
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     try {
       const reference = await fetchLatestLedgerSnapshot();
       const startLedger = dateToEstimatedLedger(startDate, reference);
@@ -152,7 +154,10 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
         endLedger,
         cliffLedger,
         cancellable,
+        signal: controller.signal,
       });
+
+      if (controller.signal.aborted) return;
 
       setResult(created);
       setStatus("success");
