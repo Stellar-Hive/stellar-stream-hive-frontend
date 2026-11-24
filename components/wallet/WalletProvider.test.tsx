@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useWallet } from "@/hooks/useWallet";
 import { WalletProvider, useWalletContext } from "./WalletProvider";
 
 const TestComponent = () => {
@@ -149,5 +150,174 @@ describe("WalletProvider - Freighter watching", () => {
     });
 
     addEventListenerSpy.mockRestore();
+  });
+});
+
+interface FakeFreighter {
+  isConnected?: () => Promise<boolean>;
+  requestAccess?: () => Promise<{ address?: string } | string>;
+  getPublicKey?: () => Promise<string>;
+  getNetwork?: () => Promise<string>;
+  watchAccount?: (callback: (address: string) => void) => () => void;
+  watchNetwork?: (callback: (network: string) => void) => () => void;
+}
+
+function setFreighter(freighter: FakeFreighter | undefined) {
+  (window as unknown as { freighter?: FakeFreighter }).freighter = freighter;
+}
+
+function Probe() {
+  const wallet = useWallet();
+  return (
+    <div>
+      <span data-testid="detecting">{String(wallet.isDetecting)}</span>
+      <span data-testid="installed">{String(wallet.isFreighterInstalled)}</span>
+      <span data-testid="connected">{String(wallet.isConnected)}</span>
+      <span data-testid="address">{wallet.publicKey ?? "none"}</span>
+      <span data-testid="network">{wallet.network ?? "none"}</span>
+      <span data-testid="wrong-network">{String(wallet.isWrongNetwork)}</span>
+      <span data-testid="error">{wallet.error ?? "none"}</span>
+      <button type="button" onClick={() => void wallet.connect()}>
+        connect
+      </button>
+      <button type="button" onClick={() => wallet.disconnect()}>
+        disconnect
+      </button>
+    </div>
+  );
+}
+
+async function renderProvider() {
+  render(
+    <WalletProvider>
+      <Probe />
+    </WalletProvider>
+  );
+  await waitFor(() => expect(screen.getByTestId("detecting")).toHaveTextContent("false"));
+}
+
+async function clickConnect() {
+  await act(async () => {
+    fireEvent.click(screen.getByText("connect"));
+  });
+}
+
+describe("WalletProvider - connect, disconnect and network flows", () => {
+  beforeEach(() => {
+    setFreighter(undefined);
+  });
+
+  afterEach(() => {
+    setFreighter(undefined);
+  });
+
+  it("reports Freighter as not installed and refuses to connect", async () => {
+    await renderProvider();
+
+    expect(screen.getByTestId("installed")).toHaveTextContent("false");
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+
+    await clickConnect();
+
+    expect(screen.getByTestId("error")).toHaveTextContent("Freighter wallet is not installed.");
+  });
+
+  it("connects and exposes the address and network", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "",
+      requestAccess: async () => ({ address: "GCONNECTED" }),
+      getNetwork: async () => "TESTNET",
+    });
+    await renderProvider();
+    expect(screen.getByTestId("installed")).toHaveTextContent("true");
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+
+    await clickConnect();
+
+    await waitFor(() => expect(screen.getByTestId("connected")).toHaveTextContent("true"));
+    expect(screen.getByTestId("address")).toHaveTextContent("GCONNECTED");
+    expect(screen.getByTestId("network")).toHaveTextContent("TESTNET");
+    expect(screen.getByTestId("wrong-network")).toHaveTextContent("false");
+    expect(screen.getByTestId("error")).toHaveTextContent("none");
+  });
+
+  it("shows the error when access is denied", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "",
+      requestAccess: async () => {
+        throw new Error("The user rejected this request.");
+      },
+    });
+    await renderProvider();
+
+    await clickConnect();
+
+    await waitFor(() => expect(screen.getByTestId("error")).toHaveTextContent("The user rejected this request."));
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+  });
+
+  it("reports an error when Freighter returns no address", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "",
+      requestAccess: async () => ({}),
+    });
+    await renderProvider();
+
+    await clickConnect();
+
+    await waitFor(() => expect(screen.getByTestId("error")).toHaveTextContent("Unable to retrieve wallet address."));
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+  });
+
+  it("flags a network mismatch when Freighter is on another network", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "",
+      requestAccess: async () => ({ address: "GCONNECTED" }),
+      getNetwork: async () => "PUBLIC",
+    });
+    await renderProvider();
+
+    await clickConnect();
+
+    await waitFor(() => expect(screen.getByTestId("connected")).toHaveTextContent("true"));
+    expect(screen.getByTestId("network")).toHaveTextContent("PUBLIC");
+    expect(screen.getByTestId("wrong-network")).toHaveTextContent("true");
+  });
+
+  it("restores an already-connected wallet on load", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "GRESTORED",
+      getNetwork: async () => "TESTNET",
+    });
+
+    await renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("address")).toHaveTextContent("GRESTORED"));
+    expect(screen.getByTestId("connected")).toHaveTextContent("true");
+  });
+
+  it("disconnect clears the address, network and error", async () => {
+    setFreighter({
+      isConnected: async () => true,
+      getPublicKey: async () => "",
+      requestAccess: async () => ({ address: "GCONNECTED" }),
+      getNetwork: async () => "TESTNET",
+    });
+    await renderProvider();
+    await clickConnect();
+    await waitFor(() => expect(screen.getByTestId("connected")).toHaveTextContent("true"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("disconnect"));
+    });
+
+    expect(screen.getByTestId("connected")).toHaveTextContent("false");
+    expect(screen.getByTestId("address")).toHaveTextContent("none");
+    expect(screen.getByTestId("network")).toHaveTextContent("none");
   });
 });
