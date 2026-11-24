@@ -126,21 +126,56 @@ async function invokeContract(
   return { hash, returnValue: result };
 }
 
-async function pollTransaction(server: SorobanRpc.Server, hash: string, timeoutMs: number = 30_000): Promise<unknown> {
+/** The three states `getTransaction` can report for a submitted transaction. */
+type PollStatus = "NOT_FOUND" | "SUCCESS" | "FAILED";
+
+/** First wait between status checks. */
+export const POLL_INITIAL_DELAY_MS = 1_000;
+/** The wait grows by this much per check... */
+export const POLL_DELAY_STEP_MS = 500;
+/** ...up to this ceiling. */
+export const POLL_MAX_DELAY_MS = 3_000;
+
+/** Delay before status check number `attempt` (0-based): 1s, 1.5s, 2s, 2.5s, then 3s. */
+export function nextPollDelay(attempt: number): number {
+  return Math.min(POLL_MAX_DELAY_MS, POLL_INITIAL_DELAY_MS + attempt * POLL_DELAY_STEP_MS);
+}
+
+export async function pollTransaction(
+  server: SorobanRpcType.Server,
+  hash: string,
+  timeoutMs: number = 30_000
+): Promise<unknown> {
+  const { scValToNative } = await getSdk();
   const start = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const response = await server.getTransaction(hash);
-    if (response.status === "SUCCESS") {
-      return response.returnValue ? scValToNative(response.returnValue) : null;
+
+  for (let attempt = 0; ; attempt++) {
+    let response;
+    try {
+      response = await server.getTransaction(hash);
+    } catch (err) {
+      // An RPC failure is not "still pending": say so instead of retrying silently.
+      const raw = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not read the status of transaction ${hash}: ${raw}`);
     }
-    if (response.status === "FAILED") {
-      throw new Error("Transaction failed on-chain. See Stellar Expert for details.");
+
+    const status = response.status as PollStatus;
+    switch (status) {
+      case "SUCCESS":
+        return response.returnValue ? scValToNative(response.returnValue) : null;
+      case "FAILED":
+        throw new Error("Transaction failed on-chain. See Stellar Expert for details.");
+      case "NOT_FOUND":
+        // Not in a ledger yet: keep waiting, with a gentle backoff.
+        break;
+      default:
+        throw new Error(`Unexpected transaction status from the RPC: ${String(status)}`);
     }
+
     if (Date.now() - start > timeoutMs) {
       throw new Error("Timed out waiting for transaction confirmation.");
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, nextPollDelay(attempt)));
   }
 }
 
