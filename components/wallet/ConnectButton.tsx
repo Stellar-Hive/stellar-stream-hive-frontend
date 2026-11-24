@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { shortenAddress } from "@/lib/format";
 import { Spinner } from "@/components/ui/Spinner";
+import {
+  WALLET_DETECTING,
+  WALLET_DETECTING_ARIA_LABEL,
+  WALLET_NOT_INSTALLED_LINK_TEXT,
+  WALLET_NOT_INSTALLED_TITLE,
+  WALLET_CONNECTING,
+  WALLET_CONNECT_BUTTON,
+  WALLET_DISCONNECT_LABEL,
+  WALLET_UNKNOWN_NETWORK,
+} from "@/lib/messages";
 
 /**
  * Connects/disconnects Freighter and shows the active address once connected.
@@ -53,10 +63,10 @@ export function ConnectButton() {
         type="button"
         disabled
         aria-busy="true"
-        aria-label="Detecting Freighter wallet"
+        aria-label={WALLET_DETECTING_ARIA_LABEL}
         className="btn-secondary text-sm opacity-60"
       >
-        <Spinner size="sm" decorative /> Checking wallet…
+        <Spinner size="sm" decorative /> {WALLET_DETECTING}
       </button>
     );
   }
@@ -68,9 +78,9 @@ export function ConnectButton() {
         target="_blank"
         rel="noopener noreferrer"
         className="btn-secondary text-sm"
-        title="Freighter wallet extension is required"
+        title={WALLET_NOT_INSTALLED_TITLE}
       >
-        Install Freighter
+        {WALLET_NOT_INSTALLED_LINK_TEXT}
         <span className="sr-only"> (opens in a new tab)</span>
       </a>
     );
@@ -96,7 +106,7 @@ export function ConnectButton() {
             tabIndex={-1}
             className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-border bg-surface p-1 shadow-xl outline-none"
           >
-            <div className="px-3 py-2 text-xs text-muted">{wallet.network ?? "Unknown network"}</div>
+            <div className="px-3 py-2 text-xs text-muted">{wallet.network ?? WALLET_UNKNOWN_NETWORK}</div>
             <button
               type="button"
               role="menuitem"
@@ -106,7 +116,7 @@ export function ConnectButton() {
               }}
               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
             >
-              Disconnect
+              {WALLET_DISCONNECT_LABEL}
             </button>
           </div>
         )}
@@ -119,10 +129,10 @@ export function ConnectButton() {
       <button type="button" onClick={wallet.connect} disabled={wallet.isConnecting} className="btn-primary text-sm">
         {wallet.isConnecting ? (
           <>
-            <Spinner size="sm" decorative /> Connecting…
+            <Spinner size="sm" decorative /> {WALLET_CONNECTING}
           </>
         ) : (
-          "Connect Wallet"
+          WALLET_CONNECT_BUTTON
         )}
       </button>
       {wallet.error && <span className="max-w-[220px] text-right text-xs text-danger">{wallet.error}</span>}

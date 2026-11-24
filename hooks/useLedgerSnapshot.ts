@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchLatestLedgerSnapshot } from "@/lib/stellar";
+import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
 
 /** How often the shared ledger snapshot re-syncs from Soroban RPC. */
 export const RESYNC_MS = 30_000;
 
-export interface LedgerSnapshot {
-  /** Latest ledger sequence number, or null until the first fetch resolves. */
-  reference: number | null;
+export interface LedgerSnapshotState {
+  /** Latest ledger snapshot, or null until the first fetch resolves. */
+  snapshot: LedgerSnapshot | null;
   /** True until the first fetch resolves (or while a simulated reference is absent). */
   isLoading: boolean;
   /** Error from the most recent fetch, if any. */
@@ -20,9 +20,9 @@ export interface LedgerSnapshot {
 export interface UseLedgerSnapshotOptions {
   /**
    * When provided, short-circuits network access entirely and uses this
-   * ledger number as the reference (landing page demo).
+   * snapshot as the reference (landing page demo).
    */
-  simulatedReference?: number | null;
+  simulatedReference?: LedgerSnapshot | null;
   /**
    * When false, performs exactly one initial fetch (no interval) so that
    * completed/cancelled streams still get a real reference.
@@ -41,12 +41,12 @@ function toError(value: unknown): Error {
  * this hook within the same page share the same polling cadence, avoiding
  * duplicate RPC calls.
  */
-export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): LedgerSnapshot {
+export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): LedgerSnapshotState {
   const { simulatedReference, enabled = true } = options;
 
   const hasSimulated = simulatedReference !== undefined && simulatedReference !== null;
 
-  const [reference, setReference] = useState<number | null>(hasSimulated ? simulatedReference : null);
+  const [snapshot, setSnapshot] = useState<LedgerSnapshot | null>(hasSimulated ? simulatedReference : null);
   const [isLoading, setIsLoading] = useState<boolean>(!hasSimulated);
   const [error, setError] = useState<Error | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(hasSimulated ? Date.now() : null);
@@ -57,7 +57,7 @@ export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): Ledge
     try {
       const snapshot = await fetchLatestLedgerSnapshot();
       if (!mountedRef.current) return;
-      setReference(snapshot);
+      setSnapshot(snapshot);
       setError(null);
       setLastSyncedAt(Date.now());
     } catch (err) {
@@ -75,7 +75,7 @@ export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): Ledge
 
     // Simulated reference: no network access at all.
     if (hasSimulated) {
-      setReference(simulatedReference ?? null);
+      setSnapshot(simulatedReference ?? null);
       setIsLoading(false);
       setError(null);
       setLastSyncedAt(Date.now());
@@ -105,7 +105,7 @@ export function useLedgerSnapshot(options: UseLedgerSnapshotOptions = {}): Ledge
     };
   }, [hasSimulated, simulatedReference, enabled, fetchSnapshot]);
 
-  return { reference, isLoading, error, lastSyncedAt };
+  return { snapshot, isLoading, error, lastSyncedAt };
 }
 
 export default useLedgerSnapshot;

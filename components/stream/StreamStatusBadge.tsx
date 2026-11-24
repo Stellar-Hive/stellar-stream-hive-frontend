@@ -32,8 +32,9 @@ const STYLES: Record<StreamStatus, { label: string; description: string; classNa
 };
 
 export function StreamStatusBadge({ status }: { status: StreamStatus }) {
-  const style = STYLES[status];
   const descriptionId = useId();
+  const style = STYLES[status];
+  if (!style) return null;
   return (
     <>
       <span

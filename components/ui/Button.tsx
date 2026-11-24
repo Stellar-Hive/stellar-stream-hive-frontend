@@ -31,7 +31,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const variantClass = VARIANT_CLASSES[variant];
+    const variantClass = VARIANT_CLASSES[variant] ?? "btn-primary";
     const isDisabled = disabled || isLoading;
 
     return (

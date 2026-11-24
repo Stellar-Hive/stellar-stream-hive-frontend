@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { Toast as ToastType } from '@/lib/toast';
+import { type Toast as ToastType } from '@/lib/toast';
 import { stellarExpertTxUrl } from '@/lib/format';
 
 export function Toast({ toast, onDismiss, network }: {

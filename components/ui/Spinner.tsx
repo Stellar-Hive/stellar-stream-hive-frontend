@@ -13,7 +13,7 @@ const SIZE_MAP: Record<NonNullable<SpinnerProps["size"]>, string> = {
 
 /** A minimal spinning-ring loading indicator. */
 export function Spinner({ size = "md", className = "", decorative = false }: SpinnerProps) {
-  const classes = `inline-block animate-spin rounded-full border-primary/25 border-t-primary ${SIZE_MAP[size]} ${className}`;
+  const classes = `inline-block animate-spin rounded-full border-primary/25 border-t-primary ${SIZE_MAP[size] ?? "h-6 w-6 border-2"} ${className}`;
 
   if (decorative) {
     return <span aria-hidden="true" className={classes} />;

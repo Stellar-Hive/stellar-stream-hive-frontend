@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useState, useCallback } from 'react';
+import { type ReactNode, createContext, useContext, useState, useCallback } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info';
 

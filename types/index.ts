@@ -27,6 +27,8 @@ export interface Stream {
   totalAmount: string;
   /** Amount already withdrawn by the recipient, in base units, as a decimal string. */
   withdrawnAmount: string;
+  /** Indexed base-unit balance still claimable after cancellation, when available. */
+  frozenWithdrawableAmount?: string;
   /** Ledger sequence number at which streaming begins. */
   startLedger: number;
   /** Ledger sequence number at which streaming ends. */

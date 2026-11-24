@@ -12,6 +12,11 @@ import {
 } from 'react';
 import type { UseWalletResult } from '@/hooks/useWallet';
 import { NETWORK } from '@/lib/stellar';
+import {
+  WALLET_NOT_INSTALLED_ERROR,
+  WALLET_NO_ADDRESS_ERROR,
+  WALLET_CONNECT_FAILED_ERROR,
+} from '@/lib/messages';
 
 export type WalletContextValue = UseWalletResult;
 
@@ -68,7 +73,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       ).freighter;
 
       if (!freighter) {
-        setError("Freighter wallet is not installed.");
+        setError(WALLET_NOT_INSTALLED_ERROR);
         return;
       }
 
@@ -83,7 +88,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       }
 
       if (!address) {
-        setError("Unable to retrieve wallet address.");
+        setError(WALLET_NO_ADDRESS_ERROR);
         return;
       }
 
@@ -99,7 +104,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       setPublicKey(address);
       setNetwork(currentNetwork);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect wallet.");
+      setError(err instanceof Error ? err.message : WALLET_CONNECT_FAILED_ERROR);
     } finally {
       setIsConnecting(false);
     }

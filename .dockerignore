@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (installed fresh inside the image)
+node_modules
+
+# Next.js build output (rebuilt inside the image)
+.next
+out
+
+# Local env files (secrets must not leak into the image)
+.env
+.env*.local
+.env.local
+
+# Test artifacts
+coverage
+.nyc_output
+__snapshots__
+
+# Editor / OS artefacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea
+.vscode
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Docs / screenshots (not needed at runtime)
+docs

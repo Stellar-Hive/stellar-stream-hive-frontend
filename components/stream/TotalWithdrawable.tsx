@@ -1,91 +1,81 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
+import { useEffect, useState } from "react";
+import { useLedgerSnapshot } from "@/hooks/useLedgerSnapshot";
 import { computeWithdrawable, estimateCurrentLedger } from "@/lib/streaming";
 import { formatTokenAmount } from "@/lib/format";
-import type { Stream } from "@/types";
-import { RESYNC_MS, TICK_MS } from "@/lib/constants";
+import type { Stream, TokenInfo } from "@/types";
+import { TICK_MS } from "@/lib/constants";
 
 export interface TotalWithdrawableProps {
   streams: Stream[];
 }
 
-/**
- * Aggregates the live withdrawable balance across multiple streams that
- * share the same token, ticking once per second off a single shared ledger
- * reference (rather than one RPC poll per card).
- */
+function getWithdrawable(stream: Stream, currentLedger: number | null): bigint | null {
+  if (stream.status === "cancelled") {
+    return stream.frozenWithdrawableAmount === undefined ? null : BigInt(stream.frozenWithdrawableAmount);
+  }
+  if (stream.status === "completed") {
+    const remaining = BigInt(stream.totalAmount) - BigInt(stream.withdrawnAmount);
+    return remaining > 0n ? remaining : 0n;
+  }
+  if (stream.status === "scheduled") return 0n;
+  if (currentLedger === null) return null;
+
+  return computeWithdrawable({
+    totalAmount: BigInt(stream.totalAmount),
+    withdrawnAmount: BigInt(stream.withdrawnAmount),
+    startLedger: stream.startLedger,
+    endLedger: stream.endLedger,
+    cliffLedger: stream.cliffLedger,
+    currentLedger,
+  });
+}
+
+/** Shows one live withdrawable total per token contract. */
 export function TotalWithdrawable({ streams }: TotalWithdrawableProps) {
-  const [reference, setReference] = useState<LedgerSnapshot | null>(null);
+  const { snapshot, isLoading } = useLedgerSnapshot();
   const [, setTick] = useState(0);
-  const mountedRef = useRef(true);
+  const hasLiveStreams = streams.some((stream) => stream.status === "active" || stream.status === "cliff");
 
   useEffect(() => {
-    mountedRef.current = true;
-    function sync() {
-      fetchLatestLedgerSnapshot()
-        .then((snap) => {
-          if (mountedRef.current) setReference(snap);
-        })
-        .catch(() => undefined);
-    }
-    sync();
-    const resync = setInterval(sync, RESYNC_MS);
-    return () => {
-      mountedRef.current = false;
-      clearInterval(resync);
-    };
-  }, []);
-
-  useEffect(() => {
+    if (!hasLiveStreams || !snapshot) return;
     const tick = setInterval(() => setTick((t) => t + 1), TICK_MS);
     return () => clearInterval(tick);
-  }, []);
-
-  if (streams.length === 0 || !reference) return null;
+  }, [hasLiveStreams, snapshot]);
 
   // Only aggregate cleanly when every stream shares a token; mixed-token
   // portfolios are shown per-card instead of summed into one misleading number.
-  const symbol = streams[0].token.symbol;
-  const decimals = streams[0].token.decimals;
-  const sameToken = streams.every((s) => s.token.contractId === streams[0].token.contractId);
+  const firstStream = streams[0];
+  if (!firstStream) return null;
+  const symbol = firstStream.token.symbol;
+  const decimals = firstStream.token.decimals;
+  const sameToken = streams.every((s) => s.token.contractId === firstStream.token.contractId);
 
-  if (!sameToken) return null;
+  const currentLedger = snapshot ? estimateCurrentLedger({
+    lastKnownLedger: snapshot.ledger,
+    lastKnownLedgerTimestampMs: snapshot.timestampMs,
+  }) : null;
 
-  const currentLedger = estimateCurrentLedger({
-    lastKnownLedger: reference.ledger,
-    lastKnownLedgerTimestampMs: reference.timestampMs,
-  });
-
-  const total = streams.reduce((sum, s) => {
-    if (s.status === "active" || s.status === "cliff") {
-      return (
-        sum +
-        computeWithdrawable({
-          totalAmount: BigInt(s.totalAmount),
-          withdrawnAmount: BigInt(s.withdrawnAmount),
-          startLedger: s.startLedger,
-          endLedger: s.endLedger,
-          cliffLedger: s.cliffLedger,
-          currentLedger,
-        })
-      );
-    }
-    // Completed streams (fully vested) and cancelled streams (the frozen
-    // share settled at cancellation) no longer accrue live, so their
-    // withdrawable amount is simply whatever hasn't been withdrawn yet —
-    // no ledger-based calculation needed.
-    if (s.status === "completed" || s.status === "cancelled") {
-      return sum + (BigInt(s.totalAmount) - BigInt(s.withdrawnAmount));
-    }
-    return sum;
-  }, 0n);
+  const totals = new Map<string, { token: TokenInfo; amount: bigint | null }>();
+  for (const stream of streams) {
+    const { token } = stream;
+    const previous = totals.get(token.contractId);
+    const amount = getWithdrawable(stream, currentLedger);
+    totals.set(token.contractId, {
+      token: previous?.token ?? token,
+      amount: amount === null || previous?.amount === null ? null : (previous?.amount ?? 0n) + amount,
+    });
+  }
 
   return (
     <div className="card px-5 py-3 text-right">
       <p className="text-xs text-muted">Total withdrawable</p>
-      <p className="mono-tabular text-xl font-bold text-primary">{formatTokenAmount(total, symbol, decimals, 4)}</p>
+      {[...totals.values()].map(({ token, amount }) => (
+        <p key={token.contractId} className="mono-tabular text-xl font-bold text-primary">
+          {amount === null ? `${token.symbol} total unavailable` : formatTokenAmount(amount, token.symbol, token.decimals, 4)}
+        </p>
+      ))}
     </div>
   );
 }

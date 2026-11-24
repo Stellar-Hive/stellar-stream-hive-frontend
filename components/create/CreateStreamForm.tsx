@@ -17,7 +17,13 @@ import {
 } from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
 import { checkAmount, checkRecipientNotSender } from "@/lib/validation";
-import { createStreamOnChain, isStreamContractConfigured, ContractNotConfiguredError } from "@/lib/contracts";
+import {
+  createStreamOnChain,
+  isStreamContractConfigured,
+  ContractNotConfiguredError,
+  TransactionTimeoutError,
+} from "@/lib/contracts";
+import { TransactionTimeoutNotice } from "@/components/ui/TransactionTimeoutNotice";
 import { describeFreighterError } from "@/lib/freighter";
 import { formatRateFromBaseUnits, stellarExpertTxUrl } from "@/lib/format";
 import { parseStreamPrefill, hasAnyPrefillValue } from "@/lib/createStreamPrefill";
@@ -70,6 +76,7 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [timedOutHash, setTimedOutHash] = useState<string | null>(null);
   const [result, setResult] = useState<{ streamId: string; hash: string } | null>(null);
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const validationErrorsRef = useRef<HTMLDivElement>(null);
@@ -191,7 +198,10 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
     if (!sender) return;
 
     setError(null);
+    setTimedOutHash(null);
     setStatus("creating");
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     try {
       const reference = await fetchLatestLedgerSnapshot();
       const startLedger = dateToEstimatedLedger(startDate, reference);
@@ -213,12 +223,20 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
         endLedger,
         cliffLedger,
         cancellable,
+        signal: controller.signal,
       });
+
+      if (controller.signal.aborted) return;
 
       setResult(created);
       setStatus("success");
       clearStreamDraft();
     } catch (err) {
+      if (err instanceof TransactionTimeoutError) {
+        setTimedOutHash(err.hash);
+        setStatus("error");
+        return;
+      }
       setError(err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err));
       setStatus("error");
     }
@@ -401,28 +419,17 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
             </p>
           )}
 
-          {!wallet.isConnected ? (
-            <div id="wallet-section">
-              <button type="button" onClick={wallet.connect} disabled={wallet.isConnecting} className="btn-primary w-full">
-                {wallet.isConnecting ? (
-                  <>
-                    <Spinner decorative />
-                    <span>Connecting</span>
-                  </>
-                ) : (
-                  "Connect wallet to continue"
-                )}
-              </button>
-            </div>
-          ) : (
-            <button
-              ref={submitButtonRef}
-              type="button"
-              onClick={handleSubmitClick}
-              disabled={isBusy}
-              className="btn-primary w-full"
-            >
-              {isBusy ? (
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+        {timedOutHash && <TransactionTimeoutNotice hash={timedOutHash} />}
+
+        {!wallet.isConnected ? (
+          <div id="wallet-section">
+            <button type="button" onClick={wallet.connect} disabled={wallet.isConnecting} className="btn-primary w-full">
+              {wallet.isConnecting ? (
                 <>
                   <Spinner decorative />
                   <span>Creating stream</span>

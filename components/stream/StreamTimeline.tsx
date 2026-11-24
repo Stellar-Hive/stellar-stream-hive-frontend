@@ -29,39 +29,42 @@ export function StreamTimeline({
   simulatedReference,
   enabled = true,
 }: StreamTimelineProps) {
-  const sharedReference = useLedgerSnapshot({ enabled: enabled && !simulatedReference });
-  const reference: LedgerSnapshot | null = simulatedReference ?? sharedReference;
+  const { snapshot, isLoading, error } = useLedgerSnapshot({ enabled, simulatedReference });
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !snapshot) return;
     const tickInterval = setInterval(() => setTick((t) => t + 1), TICK_MS);
     return () => clearInterval(tickInterval);
-  }, [enabled]);
+  }, [enabled, snapshot]);
 
-  const currentLedger = reference
+  const currentLedger = snapshot
     ? enabled
-      ? estimateCurrentLedger({ lastKnownLedger: reference.ledger, lastKnownLedgerTimestampMs: reference.timestampMs })
-      : reference.ledger
-    : startLedger;
+      ? estimateCurrentLedger({ lastKnownLedger: snapshot.ledger, lastKnownLedgerTimestampMs: snapshot.timestampMs })
+      : snapshot.ledger
+    : null;
 
   const total = Math.max(1, endLedger - startLedger);
   const pct = (ledger: number) => Math.min(100, Math.max(0, ((ledger - startLedger) / total) * 100));
 
-  const nowPct = pct(currentLedger);
+  const nowPct = currentLedger === null ? null : pct(currentLedger);
   const cliffPct = cliffLedger !== undefined ? pct(cliffLedger) : null;
 
-  const nowPctRounded = Math.floor(nowPct);
+  const nowPctRounded = nowPct === null ? null : Math.floor(nowPct);
   const cliffPctRounded = cliffPct !== null ? Math.floor(cliffPct) : null;
   const ariaLabel =
-    cliffPctRounded !== null
-      ? `Stream is ${nowPctRounded}% through; cliff at ${cliffPctRounded}%`
-      : `Stream is ${nowPctRounded}% through`;
+    nowPctRounded === null
+      ? "Stream timeline"
+      : cliffPctRounded !== null
+        ? `Stream is ${nowPctRounded}% through; cliff at ${cliffPctRounded}%`
+        : `Stream is ${nowPctRounded}% through`;
 
   return (
     <div className="w-full">
       <div className="relative h-3 w-full rounded-full bg-border" role="img" aria-label={ariaLabel}>
-        <div className="absolute inset-y-0 left-0 rounded-full bg-primary/30" style={{ width: `${nowPct}%` }} />
+        {nowPct !== null && (
+          <div className="absolute inset-y-0 left-0 rounded-full bg-primary/30" style={{ width: `${nowPct}%` }} />
+        )}
         {cliffPct !== null && (
           <div
             className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-warning"
@@ -69,12 +72,19 @@ export function StreamTimeline({
             title="Cliff"
           />
         )}
+        {nowPct !== null && (
         <div
           className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary shadow"
           style={{ left: `${nowPct}%` }}
           title="Now"
         />
+        )}
       </div>
+      {snapshot === null && (
+        <p role="status" className="mt-2 text-xs text-muted">
+          {isLoading ? "Loading stream progress…" : error ? "Unable to load ledger data." : "Ledger data unavailable."}
+        </p>
+      )}
       <div className="mt-2 flex justify-between text-xs text-muted">
         <TimelineLabel label="Start" time={startTime} />
         {cliffTime !== undefined && cliffLedger !== undefined && <TimelineLabel label="Cliff" time={cliffTime} />}

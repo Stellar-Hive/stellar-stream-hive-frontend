@@ -1,0 +1,8 @@
+{
+  "ignores": [],
+  "ignore-patterns": [
+    ".next",
+    "coverage",
+    "node_modules"
+  ]
+}

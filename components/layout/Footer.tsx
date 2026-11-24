@@ -6,6 +6,7 @@ import { formatBuildLabel, getBuildInfo } from "@/lib/buildInfo";
 export const SECURITY_MODEL_URL = "https://github.com/Stellar-Hive/stellar-stream-hive-contract";
 
 export function Footer() {
+  const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL;
   const streamContractId = process.env.NEXT_PUBLIC_STREAM_CONTRACT_ID;
   const build = getBuildInfo(process.env.NEXT_PUBLIC_APP_VERSION, process.env.NEXT_PUBLIC_APP_COMMIT);
   const reportIssueUrl = buildReportIssueUrl({
@@ -86,7 +87,7 @@ export function Footer() {
           <a
             href={reportIssueUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="transition hover:text-white"
           >
             Report an issue
