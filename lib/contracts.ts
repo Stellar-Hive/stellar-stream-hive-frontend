@@ -18,7 +18,7 @@
 import type { rpc as SorobanRpcType } from "@stellar/stellar-sdk";
 import { fetchLatestLedgerSnapshot, getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./stellar";
 import { signWithFreighter } from "./freighter";
-import { isUnfundedAccountError, UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
+import { describeFailedTransaction, isUnfundedAccountError, UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
 import { makeTokenResolver, mapRawStream, type RawStreamRecord } from "./streamMapping";
 import { withTokenMetadata } from "./tokens";
 import type { Stream } from "@/types";
@@ -201,7 +201,7 @@ export async function pollTransaction(
       case "SUCCESS":
         return response.returnValue ? scValToNative(response.returnValue) : null;
       case "FAILED":
-        throw new Error("Transaction failed on-chain. See Stellar Expert for details.");
+        throw new Error(describeFailedTransaction(response));
       case "NOT_FOUND":
         // Not in a ledger yet: keep waiting, with a gentle backoff.
         break;

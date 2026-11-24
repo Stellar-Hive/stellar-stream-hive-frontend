@@ -85,3 +85,58 @@ export function describeRpcError(message: string): RpcErrorDescription | null {
 
   return { message: rule.message, details: message };
 }
+
+/** Shown when a failed transaction carries no contract error code we can name. */
+export const GENERIC_FAILED_TRANSACTION_MESSAGE = "Transaction failed on-chain. See Stellar Expert for details.";
+
+/** Calls `target[method]()` when it is a function; undefined otherwise. Lets us probe XDR objects safely. */
+function tryCall(target: unknown, method: string): unknown {
+  const fn = (target as Record<string, unknown> | null | undefined)?.[method];
+  return typeof fn === "function" ? (fn as () => unknown).call(target) : undefined;
+}
+
+/** The contract error code inside an `ScVal` error value (`Error(Contract, #N)`), or null. */
+function contractCodeFromScVal(val: unknown): number | null {
+  if ((tryCall(val, "switch") as { name?: string } | undefined)?.name !== "scvError") return null;
+  const err = tryCall(val, "error");
+  if ((tryCall(err, "type") as { name?: string } | undefined)?.name !== "sceContract") return null;
+  const code = tryCall(err, "contractCode");
+  return typeof code === "number" ? code : null;
+}
+
+/**
+ * Reads a `getTransaction` result for a FAILED transaction and, when it holds a
+ * Stream contract error code, returns the friendly sentence for it (via
+ * `describeContractError`). Looks in the diagnostic events first (where Soroban
+ * records the `Error(Contract, #N)` value), then in the response's text.
+ * Returns null when no recognised contract error is present.
+ */
+export function contractErrorFromFailedTransaction(response: unknown): string | null {
+  const events = (response as { diagnosticEventsXdr?: unknown } | null | undefined)?.diagnosticEventsXdr;
+  if (Array.isArray(events)) {
+    for (const event of events) {
+      const v0 = tryCall(tryCall(tryCall(event, "event"), "body"), "v0");
+      const topics = tryCall(v0, "topics");
+      const candidates = [...(Array.isArray(topics) ? topics : []), tryCall(v0, "data")];
+      for (const candidate of candidates) {
+        const code = contractCodeFromScVal(candidate);
+        if (code !== null) {
+          const message = describeContractError(`Error(Contract, #${code})`);
+          if (message) return message;
+        }
+      }
+    }
+  }
+
+  try {
+    const text = JSON.stringify(response, (_key, value) => (typeof value === "bigint" ? value.toString() : value));
+    return typeof text === "string" ? describeContractError(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The message to show for a FAILED transaction: the contract's own error when known, else the generic one. */
+export function describeFailedTransaction(response: unknown): string {
+  return contractErrorFromFailedTransaction(response) ?? GENERIC_FAILED_TRANSACTION_MESSAGE;
+}
