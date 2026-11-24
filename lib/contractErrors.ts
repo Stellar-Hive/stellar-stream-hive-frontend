@@ -31,7 +31,7 @@ export function describeContractError(message: string): string | null {
   const match = message.match(/Error\(Contract,\s*#(\d+)\)/i);
   if (!match) return null;
 
-  const code = Number(match[1]);
+  const code = Number(match[1] ?? "");
   return CONTRACT_ERROR_MESSAGES[code] ?? null;
 }
 

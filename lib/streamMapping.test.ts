@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   defaultTokenResolver,
   deriveOnChainStatus,
+  isValidApiStats,
+  isValidApiStream,
   makeTokenResolver,
   mapApiStats,
   mapApiStatus,
   mapApiStream,
   mapRawStream,
+  type ApiStats,
   type ApiStreamView,
   type RawStreamRecord,
 } from "./streamMapping";
@@ -36,6 +39,15 @@ const apiView: ApiStreamView = {
 };
 
 describe("mapApiStream", () => {
+  it("preserves the indexed frozen remainder as a base-unit string for cancelled streams", () => {
+    const cancelled = mapApiStream({
+      ...apiView,
+      status: "cancelled",
+      withdrawable_amount: "9007199254740993",
+    }, reference);
+    expect(cancelled.frozenWithdrawableAmount).toBe("9007199254740993");
+  });
+
   it("maps snake_case API fields to the app Stream", () => {
     const s = mapApiStream(apiView, reference);
     expect(s).toMatchObject({
@@ -196,5 +208,64 @@ describe("mapRawStream", () => {
   ])("maps contract status variant %#", (status, expected) => {
     const s = mapRawStream("3", { ...raw, status });
     expect(s.status).toBe(expected);
+  });
+});
+
+describe("isValidApiStream", () => {
+  it("accepts a well-formed StreamView", () => {
+    expect(isValidApiStream(apiView)).toBe(true);
+  });
+
+  it("rejects a missing field", () => {
+    const { sender, ...withoutSender } = apiView;
+    expect(isValidApiStream(withoutSender)).toBe(false);
+  });
+
+  it("rejects a renamed field (e.g. total_amount -> amount)", () => {
+    const { total_amount, ...rest } = apiView;
+    expect(isValidApiStream({ ...rest, amount: total_amount })).toBe(false);
+  });
+
+  it("rejects a field with the wrong type", () => {
+    expect(isValidApiStream({ ...apiView, total_amount: 30000000000 })).toBe(false);
+    expect(isValidApiStream({ ...apiView, cancellable: "true" })).toBe(false);
+  });
+
+  it("rejects an unrecognized status value", () => {
+    expect(isValidApiStream({ ...apiView, status: "unknown" })).toBe(false);
+  });
+
+  it("rejects non-objects", () => {
+    expect(isValidApiStream(null)).toBe(false);
+    expect(isValidApiStream("stream")).toBe(false);
+    expect(isValidApiStream(undefined)).toBe(false);
+  });
+});
+
+describe("isValidApiStats", () => {
+  const stats: ApiStats = {
+    total_streams: 10,
+    active_streams: 4,
+    total_streamed: "1000",
+    total_withdrawn: "500",
+  };
+
+  it("accepts a well-formed stats payload, with or without the optional field", () => {
+    expect(isValidApiStats(stats)).toBe(true);
+    expect(isValidApiStats({ ...stats, total_value_locked: "500" })).toBe(true);
+  });
+
+  it("rejects a missing required field", () => {
+    const { active_streams, ...withoutActive } = stats;
+    expect(isValidApiStats(withoutActive)).toBe(false);
+  });
+
+  it("rejects a renamed field", () => {
+    const { total_streamed, ...rest } = stats;
+    expect(isValidApiStats({ ...rest, streamed_total: total_streamed })).toBe(false);
+  });
+
+  it("rejects the optional field when present with the wrong type", () => {
+    expect(isValidApiStats({ ...stats, total_value_locked: 500 })).toBe(false);
   });
 });

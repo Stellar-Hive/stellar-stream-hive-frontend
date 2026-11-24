@@ -31,6 +31,21 @@ async function getSdk(): Promise<typeof import("@stellar/stellar-sdk")> {
   return _sdk;
 }
 
+/**
+ * Thrown when a submitted transaction was not confirmed within the polling
+ * window. The transaction may still be included in a ledger afterwards, so the
+ * error carries its hash: callers show it and point the user at the explorer
+ * instead of inviting a blind retry that could create a second stream.
+ */
+export class TransactionTimeoutError extends Error {
+  constructor(public readonly hash: string) {
+    super(
+      `Your transaction may still confirm. Check the hash on the explorer before retrying: ${hash}`
+    );
+    this.name = "TransactionTimeoutError";
+  }
+}
+
 export class ContractNotConfiguredError extends Error {
   constructor(public readonly contractName: string) {
     super(
@@ -127,61 +142,12 @@ async function invokeContract(
   return { hash, returnValue: result };
 }
 
-/** The three states `getTransaction` can report for a submitted transaction. */
-type PollStatus = "NOT_FOUND" | "SUCCESS" | "FAILED";
-
-/** First wait between status checks. */
-export const POLL_INITIAL_DELAY_MS = 1_000;
-/** The wait grows by this much per check... */
-export const POLL_DELAY_STEP_MS = 500;
-/** ...up to this ceiling. */
-export const POLL_MAX_DELAY_MS = 3_000;
-
-/** Delay before status check number `attempt` (0-based): 1s, 1.5s, 2s, 2.5s, then 3s. */
-export function nextPollDelay(attempt: number): number {
-  return Math.min(POLL_MAX_DELAY_MS, POLL_INITIAL_DELAY_MS + attempt * POLL_DELAY_STEP_MS);
-}
-
-/**
- * Thrown when polling is cancelled (for example the component unmounted). The
- * transaction was already submitted and may still confirm, so the error carries
- * its hash instead of pretending nothing was sent.
- */
-export class TransactionPollAbortedError extends Error {
-  constructor(public readonly hash: string) {
-    super(`Stopped waiting for confirmation. Transaction ${hash} was submitted and may still confirm.`);
-    this.name = "TransactionPollAbortedError";
-  }
-}
-
-export interface PollOptions {
-  /** How long to wait for confirmation before giving up. Default 30 seconds. */
-  timeoutMs?: number;
-  /** Abort to stop polling; the poll then rejects with {@link TransactionPollAbortedError}. */
-  signal?: AbortSignal;
-}
-
-/** Resolves after `ms`, or as soon as `signal` aborts (whichever comes first). */
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal?.aborted) return resolve();
-    const timer = setTimeout(done, ms);
-    function done() {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", done);
-      resolve();
-    }
-    signal?.addEventListener("abort", done, { once: true });
-  });
-}
-
 export async function pollTransaction(
-  server: SorobanRpcType.Server,
+  server: SorobanRpc.Server,
   hash: string,
-  options: PollOptions = {}
+  timeoutMs: number = 30_000,
+  pollIntervalMs: number = 1500
 ): Promise<unknown> {
-  const { timeoutMs = 30_000, signal } = options;
-  const { scValToNative } = await getSdk();
   const start = Date.now();
 
   for (let attempt = 0; ; attempt++) {
@@ -210,9 +176,9 @@ export async function pollTransaction(
     }
 
     if (Date.now() - start > timeoutMs) {
-      throw new Error("Timed out waiting for transaction confirmation.");
+      throw new TransactionTimeoutError(hash);
     }
-    await sleep(nextPollDelay(attempt), signal);
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 }
 
@@ -261,7 +227,7 @@ export async function fetchStreamOnChain(streamId: string): Promise<Stream | nul
     makeTokenResolver(nativeTokenContractId())
   );
   const [withToken] = await withTokenMetadata([stream]);
-  return withToken;
+  return withToken ?? stream;
 }
 
 /** Calls create_stream on the Stream contract. Returns the new stream's id and tx hash. */

@@ -24,12 +24,14 @@ function stream(id: string): Stream {
 }
 
 function render(overrides: Partial<Parameters<typeof StreamFilterBar>[0]> = {}) {
+  const sort0 = STREAM_SORTS[0];
+  if (!sort0) throw new Error("STREAM_SORTS[0] is undefined");
   const props = {
     value: "all" as StreamFilter,
     onChange: vi.fn(),
     query: "",
     onQueryChange: vi.fn(),
-    sort: STREAM_SORTS[0].value,
+    sort: sort0.value,
     onSortChange: vi.fn(),
     counts: COUNTS,
     exportable: [stream("1")],
@@ -49,8 +51,10 @@ describe("StreamFilterBar", () => {
 
     expect(buttons).toHaveLength(STREAM_FILTERS.length);
     STREAM_FILTERS.forEach((filter, index) => {
-      expect(textOf(buttons[index])).toContain(filter.label);
-      expect(textOf(buttons[index])).toContain(String(COUNTS[filter.value]));
+      const btn = buttons[index];
+      if (!btn) throw new Error(`Expected button at index ${index}`);
+      expect(textOf(btn)).toContain(filter.label);
+      expect(textOf(btn)).toContain(String(COUNTS[filter.value]));
     });
   });
 
@@ -66,7 +70,9 @@ describe("StreamFilterBar", () => {
     const buttons = filterButtons(element);
 
     STREAM_FILTERS.forEach((filter, index) => {
-      (buttons[index].props.onClick as () => void)();
+      const btn = buttons[index];
+      if (!btn) throw new Error(`Expected button at index ${index}`);
+      (btn.props.onClick as () => void)();
       expect(props.onChange).toHaveBeenLastCalledWith(filter.value);
     });
   });
@@ -75,14 +81,16 @@ describe("StreamFilterBar", () => {
     const { element, props } = render();
     const [search] = findAll(element, (el) => el.type === "input");
     const [select] = findAll(element, (el) => el.type === "select");
+    const sort1 = STREAM_SORTS[1];
+    if (!sort1) throw new Error("STREAM_SORTS[1] is undefined");
 
     (search.props.onChange as (e: { target: { value: string } }) => void)({ target: { value: "GBRP" } });
     (select.props.onChange as (e: { target: { value: string } }) => void)({
-      target: { value: STREAM_SORTS[1].value },
+      target: { value: sort1.value },
     });
 
     expect(props.onQueryChange).toHaveBeenCalledWith("GBRP");
-    expect(props.onSortChange).toHaveBeenCalledWith(STREAM_SORTS[1].value);
+    expect(props.onSortChange).toHaveBeenCalledWith(sort1.value);
   });
 
   it("disables CSV export when there is nothing to export", () => {

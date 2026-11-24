@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RefreshButton, UPDATED_LABEL_TICK_MS } from "./RefreshButton";
 
@@ -55,13 +55,19 @@ describe("RefreshButton", () => {
     expect(container.querySelector("[aria-live]")).toBeNull();
   });
 
-  it("still calls onRefresh and disables while loading", () => {
+  it("calls onRefresh and keeps its accessible name and busy state while loading", () => {
     const onRefresh = vi.fn();
-    const { container, rerender } = render(<RefreshButton onRefresh={onRefresh} isLoading={false} />);
-    (container.querySelector("button") as HTMLButtonElement).click();
+    const { rerender } = render(<RefreshButton onRefresh={onRefresh} isLoading={false} />);
+    const button = screen.getByRole("button", { name: "Refresh" });
+    expect(button).toBeEnabled();
+    expect(button).toHaveAttribute("aria-busy", "false");
+    fireEvent.click(button);
     expect(onRefresh).toHaveBeenCalledTimes(1);
 
     rerender(<RefreshButton onRefresh={onRefresh} isLoading />);
-    expect((container.querySelector("button") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Refresh", busy: true })).toBeDisabled();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

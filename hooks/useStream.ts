@@ -14,6 +14,9 @@ export interface UseStreamResult {
   refetch: () => Promise<void>;
 }
 
+/** A background tab doesn't refetch; once visible again, data older than this triggers one refetch. */
+const STALE_MS = 30_000;
+
 /**
  * Loads a single stream by id, preferring the indexer API (fast, includes
  * derived status) and falling back to a direct on-chain read when the API is
@@ -21,6 +24,7 @@ export interface UseStreamResult {
  */
 export function useStream(id: string): UseStreamResult {
   const [notConfigured, setNotConfigured] = useState(false);
+  const lastFetchedAtRef = useRef<number | null>(null);
 
   const result = useAsync(
     async (isStale: () => boolean) => {

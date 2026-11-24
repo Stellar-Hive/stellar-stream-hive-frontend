@@ -17,7 +17,13 @@ import {
 } from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
 import { checkAmount, checkRecipientNotSender } from "@/lib/validation";
-import { createStreamOnChain, isStreamContractConfigured, ContractNotConfiguredError } from "@/lib/contracts";
+import {
+  createStreamOnChain,
+  isStreamContractConfigured,
+  ContractNotConfiguredError,
+  TransactionTimeoutError,
+} from "@/lib/contracts";
+import { TransactionTimeoutNotice } from "@/components/ui/TransactionTimeoutNotice";
 import { describeFreighterError } from "@/lib/freighter";
 import { stellarExpertTxUrl } from "@/lib/format";
 import type { TokenInfo } from "@/types";
@@ -47,10 +53,7 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  // Aborted on unmount so a transaction that is still being polled stops
-  // polling and does not set state on an unmounted component.
-  const pollAbortRef = useRef<AbortController | null>(null);
-  useEffect(() => () => pollAbortRef.current?.abort(), []);
+  const [timedOutHash, setTimedOutHash] = useState<string | null>(null);
   const [result, setResult] = useState<{ streamId: string; hash: string } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -126,6 +129,7 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
 
     setShowSummary(false);
     setError(null);
+    setTimedOutHash(null);
     setStatus("creating");
     const controller = new AbortController();
     pollAbortRef.current = controller;
@@ -158,8 +162,11 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
       setResult(created);
       setStatus("success");
     } catch (err) {
-      // Unmounted while polling: the transaction was sent, but there is nothing left to update.
-      if (controller.signal.aborted) return;
+      if (err instanceof TransactionTimeoutError) {
+        setTimedOutHash(err.hash);
+        setStatus("error");
+        return;
+      }
       setError(err instanceof ContractNotConfiguredError ? err.message : describeFreighterError(err));
       setStatus("error");
     }
@@ -292,6 +299,7 @@ function CreateStreamFields({ onReset }: { onReset: () => void }) {
             {error}
           </p>
         )}
+        {timedOutHash && <TransactionTimeoutNotice hash={timedOutHash} />}
 
         {!wallet.isConnected ? (
           <div id="wallet-section">

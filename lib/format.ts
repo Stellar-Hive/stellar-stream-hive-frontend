@@ -9,6 +9,16 @@
 
 export const STROOP_DECIMALS = 7;
 
+/**
+ * Formats a plain count/number with a fixed locale (never the runtime's
+ * ambient locale) so server-rendered and client-rendered HTML always match —
+ * `toLocaleString()` with no locale can pick different locales on the server
+ * and in the browser, causing a hydration mismatch.
+ */
+export function formatNumber(value: number | bigint, options?: Intl.NumberFormatOptions): string {
+  return value.toLocaleString("en-US", options);
+}
+
 /** 10^decimals, as a BigInt, for fixed-point conversions. */
 export function decimalsFactor(decimals: number = STROOP_DECIMALS): bigint {
   return 10n ** BigInt(decimals);

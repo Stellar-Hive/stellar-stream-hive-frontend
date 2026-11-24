@@ -87,28 +87,89 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment variables
 
-See [`.env.example`](./.env.example) for the full, documented list. In short:
+The table below lists every variable. Copy `.env.example` to `.env.local` and fill in the values before running `npm run dev` or building the production image.
 
-- `NEXT_PUBLIC_STREAM_CONTRACT_ID`, `NEXT_PUBLIC_VAULT_CONTRACT_ID`, `NEXT_PUBLIC_REGISTRY_CONTRACT_ID` —
-  Soroban contract IDs. `.env.example` ships with the **testnet** deployment from 2026-10-12
-  (recorded in the contracts repo's `DEPLOYMENTS.md`), so `cp .env.example .env.local` gives a
-  working testnet setup. A redeploy creates new ids; update these from `scripts/deploy.sh`'s output.
-  On any other network leave them blank and contract-calling features show a clear "not yet
-  configured" state rather than failing silently.
-- `NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE`,
-  `NEXT_PUBLIC_SOROBAN_RPC_URL` — network configuration, defaulted to Stellar testnet.
-- `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
-  platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
-  graceful empty/loading state rather than fabricating numbers.
-- `NEXT_PUBLIC_MOCK_DATA` — opt-in flag (development-only) to serve realistic fixture streams
-  instead of making real API calls. Set to `1` to enable. The UI is clearly labeled as showing
-  mock data. Only available in development and preview builds; automatically disabled in
-  production. Useful for new contributors to see all stream states without deploying contracts
-  or funding wallets.
-- `NEXT_PUBLIC_SITE_URL` — public base URL this app is deployed at, used for `metadataBase`
-  (Open Graph URLs) in `app/layout.tsx` and for the generated sitemap in `app/sitemap.ts`.
-  Defaults to `http://localhost:3000`; set it to your real deployment URL in production so
-  Open Graph previews and the sitemap don't point at a placeholder domain.
+| Variable | Required | Default | Effect |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_STREAM_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Stream contract address. Used for `create_stream`, `withdraw`, `cancel_stream`, and `get_stream`. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_VAULT_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Vault contract address. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_REGISTRY_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Registry contract address. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | No | `TESTNET` | Stellar network. One of `TESTNET`, `PUBLIC`, `FUTURENET`. Drives the network notice badge and Stellar Expert links. |
+| `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE` | No | Stellar testnet passphrase | Network passphrase used when building and signing transactions. Must match `NEXT_PUBLIC_STELLAR_NETWORK`. |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | No | `https://soroban-testnet.stellar.org` | Soroban RPC endpoint for simulating and submitting transactions. |
+| `NEXT_PUBLIC_API_BASE_URL` | No | *(empty)* | Base URL for the [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api) indexer. Used for platform stats and stream lists. Absent → graceful empty/loading state. |
+| `NEXT_PUBLIC_MOCK_DATA` | No | *(empty)* | Set to `1` in development to serve fixture streams instead of real API calls. Disabled automatically in `NODE_ENV=production`. The UI labels itself as showing mock data. |
+| `NEXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | Public base URL. Used as `metadataBase` for Open Graph tags (`app/layout.tsx`) and for the generated sitemap (`app/sitemap.ts`). Set to your real URL in production. |
+| `NEXT_PUBLIC_DOCS_URL` | No | *(empty)* | Base URL of the docs site. Absent → Docs link hidden from navbar and footer. |
+
+> **Note:** all `NEXT_PUBLIC_*` variables are inlined into the JavaScript bundle at **build time**. Changing them after a build has no effect — rebuild the app (or the Docker image) with the new values.
+
+## Deployment
+
+This section covers deploying the app to any self-hosted environment. The same principles apply to platforms such as Railway, Fly.io, or a VPS; the key constraint is that `NEXT_PUBLIC_*` variables must be supplied at build time, not at runtime.
+
+### Build-time environment variables
+
+All `NEXT_PUBLIC_*` variables are embedded into the JavaScript bundle when `npm run build` runs. They **cannot** be changed without rebuilding.
+
+For testnet, the values in `.env.example` work out of the box:
+
+```bash
+cp .env.example .env.local
+npm run build
+npm run start
+```
+
+For other networks (or a custom contract deployment), set the variables before running the build:
+
+```bash
+# Mainnet example
+NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC \
+NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015" \
+NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban.stellar.org \
+NEXT_PUBLIC_STREAM_CONTRACT_ID=<your-stream-contract-id> \
+NEXT_PUBLIC_VAULT_CONTRACT_ID=<your-vault-contract-id> \
+NEXT_PUBLIC_REGISTRY_CONTRACT_ID=<your-registry-contract-id> \
+NEXT_PUBLIC_API_BASE_URL=https://api.your-domain.com \
+NEXT_PUBLIC_SITE_URL=https://app.your-domain.com \
+npm run build
+npm run start
+```
+
+### Docker
+
+A multi-stage `Dockerfile` is included. It uses Node 20 (from `.nvmrc`) and Next.js's
+`output: "standalone"` mode to produce a minimal image.
+
+```bash
+# Build the image, supplying NEXT_PUBLIC_* values as build arguments
+docker build \
+  --build-arg NEXT_PUBLIC_STELLAR_NETWORK=TESTNET \
+  --build-arg NEXT_PUBLIC_STREAM_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_VAULT_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_REGISTRY_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=<your-api-url> \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://app.your-domain.com \
+  -t stellar-stream-hive-frontend .
+
+# Run the container
+docker run -p 3000:3000 stellar-stream-hive-frontend
+```
+
+The container listens on port 3000. `NEXT_PUBLIC_*` variables are baked into the bundle;
+the only runtime variable accepted by the Node server is `PORT` (default `3000`).
+
+### Testnet versus other networks
+
+| Setting | Testnet | Mainnet (`PUBLIC`) |
+| --- | --- | --- |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | `TESTNET` | `PUBLIC` |
+| `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` | `Public Global Stellar Network ; September 2015` |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` | `https://soroban.stellar.org` |
+| Contract IDs | From `.env.example` (deployed 2026-10-12) | From your own deployment via `scripts/deploy.sh` in the contracts repo |
+
+The app displays a network notice badge when `NEXT_PUBLIC_STELLAR_NETWORK` is not `PUBLIC`,
+so users cannot mistake testnet streams for real money.
 
 ## Project structure
 

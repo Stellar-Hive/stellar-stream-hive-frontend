@@ -17,7 +17,7 @@ describe("external links", () => {
   const anchors = SCAN_DIRS.flatMap((dir) => sourceFiles(path.join(ROOT, dir))).flatMap((file) => {
     const source = readFileSync(file, "utf8");
     return [...source.matchAll(/<a\b[^>]*>/g)]
-      .map((match) => match[0])
+      .map((match) => match[0] ?? "")
       .filter((tag) => tag.includes('target="_blank"'))
       .map((tag) => ({ file: path.relative(ROOT, file), tag }));
   });

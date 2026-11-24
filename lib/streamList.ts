@@ -77,6 +77,38 @@ export function sortStreams(streams: Stream[], key: StreamSort): Stream[] {
   }
 }
 
+export interface StreamListParams {
+  filter: StreamFilter;
+  query: string;
+  sort: StreamSort;
+}
+
+const DEFAULT_STREAM_LIST_PARAMS: StreamListParams = { filter: "all", query: "", sort: "default" };
+
+/**
+ * Reads `status`/`q`/`sort` from a URLSearchParams, so a refreshed or shared list URL restores the
+ * same filter/search/sort. Anything missing or not a recognized value falls back to the default.
+ */
+export function parseStreamListParams(params: URLSearchParams): StreamListParams {
+  const status = params.get("status");
+  const filter = STREAM_FILTERS.some((f) => f.value === status)
+    ? (status as StreamFilter)
+    : DEFAULT_STREAM_LIST_PARAMS.filter;
+  const sortRaw = params.get("sort");
+  const sort = STREAM_SORTS.some((s) => s.value === sortRaw) ? (sortRaw as StreamSort) : DEFAULT_STREAM_LIST_PARAMS.sort;
+  const query = params.get("q") ?? DEFAULT_STREAM_LIST_PARAMS.query;
+  return { filter, query, sort };
+}
+
+/** Inverse of `parseStreamListParams`: omits anything already at its default so the URL stays clean. */
+export function streamListParamsToSearchParams(state: StreamListParams): URLSearchParams {
+  const params = new URLSearchParams();
+  if (state.filter !== DEFAULT_STREAM_LIST_PARAMS.filter) params.set("status", state.filter);
+  if (state.query.trim() !== "") params.set("q", state.query);
+  if (state.sort !== DEFAULT_STREAM_LIST_PARAMS.sort) params.set("sort", state.sort);
+  return params;
+}
+
 export function countByFilter(streams: Stream[]): Record<StreamFilter, number> {
   return {
     all: streams.length,

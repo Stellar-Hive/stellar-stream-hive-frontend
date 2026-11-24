@@ -194,3 +194,9 @@ the change was made in the body when that is not obvious from the diff.
 Please include: what you expected, what happened instead, your browser/Freighter version, and
 which network (testnet/futurenet) you were connected to. Screenshots or a short recording help a
 lot for anything involving `LiveBalance` or the create-stream flow.
+
+## Declared dependencies
+
+CI (the `Declared dependencies` job) runs `npm ci` from a clean checkout and then `depcheck`, and fails if any file imports a package that is not listed in `package.json`. Unused dependencies only produce a warning. If you add an import, add the package with `npm install <name>` (or `npm install -D <name>` for tooling and tests) and commit both `package.json` and `package-lock.json`.
+
+To allow a deliberate exception (for example a package that is provided by the platform), add its name to the `ignores` list in `.depcheckrc.json` and explain why in the PR.
