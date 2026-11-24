@@ -1,29 +1,35 @@
 "use client";
 
 import { use } from "react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { useStream } from "@/hooks/useStream";
 import { useWallet } from "@/hooks/useWallet";
-import { StreamDetails } from "@/components/stream/StreamDetails";
-import { StreamActions } from "@/components/stream/StreamActions";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
 import { StartsInCountdown } from "@/components/stream/StartsInCountdown";
 import { WithdrawButton } from "@/components/stream/WithdrawButton";
 import { CancelButton } from "@/components/stream/CancelButton";
+import { LiveBalance } from "@/components/stream/LiveBalance";
+import { StreamTimeline } from "@/components/stream/StreamTimeline";
+import { StreamProgress } from "@/components/stream/StreamProgress";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
+  formatBaseUnits,
   formatRateFromBaseUnits,
   formatTokenAmount,
   shortenAddress,
   stellarExpertAccountUrl,
   stellarExpertTxUrl,
 } from "@/lib/format";
+import { csvFilename, streamToCsv, streamToJson } from "@/lib/streamList";
 import { getStreamContractId, isStreamContractConfigured } from "@/lib/contracts";
 import { AVERAGE_LEDGER_SECONDS } from "@/lib/streaming";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { buildDuplicateQueryString } from "@/lib/createStreamPrefill";
+import type { Stream } from "@/types";
 
 export default function StreamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -87,6 +93,21 @@ export default function StreamDetailPage({ params }: { params: Promise<{ id: str
           ← {backLabel}
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/streams/new?${buildDuplicateQueryString({
+              recipient: stream.recipient,
+              tokenContractId: stream.token.contractId,
+              amount: formatBaseUnits(BigInt(stream.totalAmount), stream.token.decimals, {
+                maxDecimals: stream.token.decimals,
+                minDecimals: 0,
+                grouped: false,
+              }),
+              cancellable: stream.cancellable,
+            })}`}
+            className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-hover print:hidden"
+          >
+            Duplicate
+          </Link>
           <CopyButton
             value={() => (typeof window !== "undefined" ? window.location.href : "")}
             label="Copy link"
@@ -94,6 +115,7 @@ export default function StreamDetailPage({ params }: { params: Promise<{ id: str
           <ExportButtons stream={stream} />
           <StreamStatusBadge status={stream.status} />
         </div>
+      </div>
 
       <div className="card mb-6">
         {stream.status === "scheduled" ? (
@@ -241,11 +263,20 @@ function AddressRow({ label, address }: { label: string; address: string }) {
         })()}
         <CopyButton value={address} label="Copy address" />
       </div>
-    </LedgerSnapshotProvider>
+    </div>
   );
 }
 
-function ExportButtons({ stream }: { stream: any }) {
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mb-2 flex items-center justify-between text-sm last:mb-0">
+      <span className="text-muted">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function ExportButtons({ stream }: { stream: Stream }) {
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
