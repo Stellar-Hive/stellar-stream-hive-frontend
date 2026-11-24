@@ -187,9 +187,9 @@ export function streamToJson(stream: Stream): string {
       endLedger: stream.endLedger,
       cliffLedger: stream.cliffLedger,
       cancellable: stream.cancellable,
-      startTime: stream.startTime.toISOString(),
-      endTime: stream.endTime.toISOString(),
-      cliffTime: stream.cliffTime?.toISOString() ?? null,
+      startTime: new Date(stream.startTime).toISOString(),
+      endTime: new Date(stream.endTime).toISOString(),
+      cliffTime: stream.cliffTime !== undefined ? new Date(stream.cliffTime).toISOString() : null,
     },
     null,
     2

@@ -1,11 +1,10 @@
 "use client";
 
 import { use } from "react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { useStream } from "@/hooks/useStream";
 import { useWallet } from "@/hooks/useWallet";
-import { StreamDetails } from "@/components/stream/StreamDetails";
-import { StreamActions } from "@/components/stream/StreamActions";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
 import { StartsInCountdown } from "@/components/stream/StartsInCountdown";
 import { CopyButton } from "@/components/ui/CopyButton";
@@ -63,6 +62,21 @@ export default function StreamDetailPage({ params }: { params: Promise<{ id: str
           ← {backLabel}
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/streams/new?${buildDuplicateQueryString({
+              recipient: stream.recipient,
+              tokenContractId: stream.token.contractId,
+              amount: formatBaseUnits(BigInt(stream.totalAmount), stream.token.decimals, {
+                maxDecimals: stream.token.decimals,
+                minDecimals: 0,
+                grouped: false,
+              }),
+              cancellable: stream.cancellable,
+            })}`}
+            className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-hover print:hidden"
+          >
+            Duplicate
+          </Link>
           <CopyButton
             value={() => (typeof window !== "undefined" ? window.location.href : "")}
             label="Copy link"
