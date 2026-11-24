@@ -125,7 +125,7 @@ describe("NETWORK validation", () => {
 
     expect(NETWORK).toBe("TESTNET");
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0][0]).toContain("MAINNET");
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("MAINNET");
 
     warnSpy.mockRestore();
   });

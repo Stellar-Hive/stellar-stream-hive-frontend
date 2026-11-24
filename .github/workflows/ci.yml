@@ -51,6 +51,39 @@ jobs:
           path: coverage/
           retention-days: 14
 
+  # Issue #185: fail when code imports a package that package.json does not
+  # declare. The job starts from a clean checkout and runs `npm ci`, so it also
+  # fails if package.json and package-lock.json are out of sync. Unused
+  # dependencies are reported as warnings only. To allow an exception, add the
+  # package name to "ignores" in .depcheckrc.json (see CONTRIBUTING.md).
+  dependencies:
+    name: Declared dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Check that imported packages are declared
+        run: |
+          npx --yes depcheck@1.4.7 --json > depcheck.json || true
+          node -e '
+            const r = require("./depcheck.json");
+            // "@/..." is the tsconfig path alias, not a package.
+            const missing = Object.keys(r.missing || {}).filter((n) => !n.startsWith("@/"));
+            const unused = [...(r.dependencies || []), ...(r.devDependencies || [])];
+            for (const n of unused) console.log("::warning::unused dependency: " + n);
+            if (missing.length) {
+              for (const n of missing) console.log("::error::imported but not declared in package.json: " + n);
+              process.exit(1);
+            }
+          '
+
   # Issue #259: build once on the pinned Node version (.nvmrc = 20) to keep
   # CI time short. The matrix above already confirms the code is valid on both
   # versions; a second build leg would only add time without new signal.
@@ -84,6 +117,57 @@ jobs:
           echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
           npx next build --dry-run 2>&1 | grep -E "^\s+\/" | awk '{print "| " $1 " | " $2 " |"}' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Issue #265: build Storybook to verify all stories compile and render.
+  storybook:
+    name: Storybook build (Node ${{ env.PINNED_NODE }})
+    runs-on: ubuntu-latest
+    env:
+      PINNED_NODE: "20"
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PINNED_NODE }}
+          cache: npm
+      - run: npm ci
+      - name: Build Storybook
+        run: npm run build-storybook
+
+  # Issue #262: Playwright smoke tests with mocked API and RPC.
+  e2e:
+    name: Playwright smoke tests (Node ${{ env.PINNED_NODE }})
+    runs-on: ubuntu-latest
+    env:
+      PINNED_NODE: "20"
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PINNED_NODE }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ""
+          NEXT_PUBLIC_STREAM_CONTRACT_ID: ""
+      - name: Run Playwright smoke tests
+        run: npx playwright test
+        env:
+          NEXT_PUBLIC_API_BASE_URL: "http://localhost:3000/mock-api"
+          NEXT_PUBLIC_STREAM_CONTRACT_ID: ""
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
 
   lighthouse:
     name: Lighthouse CI

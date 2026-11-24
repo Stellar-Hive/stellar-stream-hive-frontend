@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import { useStreams } from "@/hooks/useStreams";
 import { StreamCard } from "@/components/stream/StreamCard";
 import { StreamFilterBar } from "@/components/stream/StreamFilterBar";
 import { RefreshButton } from "@/components/stream/RefreshButton";
@@ -15,28 +15,45 @@ import { Spinner } from "@/components/ui/Spinner";
 import {
   countByFilter,
   filterStreams,
+  parseStreamListParams,
   searchStreams,
   sortStreams,
+  streamListParamsToSearchParams,
   type StreamFilter,
   type StreamSort,
 } from "@/lib/streamList";
 import { ConnectButton } from "@/components/wallet/ConnectButton";
-import { Spinner } from "@/components/ui/Spinner";
-import { CardSkeletonGrid } from "@/components/ui/CardSkeleton";
 import { formatTokenAmount } from "@/lib/format";
 import { groupOutgoingByToken } from "@/lib/outgoingTotals";
 
 export default function SendingPage() {
   const wallet = useWallet();
-  const { streams, isLoading, error, apiConfigured, lastUpdatedAt, refetch } = useStreams(wallet.publicKey, "sender");
-  const [filter, setFilter] = useState<StreamFilter>("all");
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<StreamSort>("default");
-  const counts = useMemo(() => countByFilter(streams), [streams]);
-  const visibleStreams = useMemo(
-    () => sortStreams(searchStreams(filterStreams(streams, filter), query), sort),
-    [streams, filter, query, sort]
-  );
+  const {
+    streams,
+    isLoading,
+    error,
+    apiConfigured,
+    lastUpdatedAt,
+    refetch,
+    filter,
+    setFilter,
+    query,
+    setQuery,
+    sort,
+    setSort,
+    counts,
+    visibleStreams,
+  } = useStreamListPage(wallet.publicKey, "sender");
+
+  useEffect(() => {
+    const search = streamListParamsToSearchParams({ filter, query, sort }).toString();
+    router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false });
+  }, [filter, query, sort, pathname, router]);
+
+  function clearFilters() {
+    setFilter("all");
+    setQuery("");
+  }
 
   if (!wallet.isConnected) {
     return (
@@ -87,9 +104,9 @@ export default function SendingPage() {
               <p className="text-xs text-muted">Total outgoing commitment</p>
               <p className="mono-tabular text-xl font-bold text-primary">
                 {formatTokenAmount(
-                  outgoingByToken[0].amount,
-                  outgoingByToken[0].symbol,
-                  outgoingByToken[0].decimals,
+                  outgoingByToken[0]?.amount ?? 0n,
+                  outgoingByToken[0]?.symbol ?? "",
+                  outgoingByToken[0]?.decimals ?? 7,
                   4
                 )}
               </p>
@@ -148,7 +165,15 @@ export default function SendingPage() {
           }
         />
       ) : visibleStreams.length === 0 ? (
-        <EmptyState title="No matching streams" description="Try a different status filter or search." />
+        <EmptyState
+          title="No streams match your filters"
+          description="Try a different status filter or search term."
+          action={
+            <button type="button" onClick={clearFilters} className="btn-secondary">
+              Clear filters
+            </button>
+          }
+        />
       ) : (
         <ul className="grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
           {visibleStreams.map((stream) => (

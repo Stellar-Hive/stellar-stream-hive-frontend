@@ -33,10 +33,16 @@ export interface OutgoingSummary {
   singleToken: boolean;
 }
 
+/** Streams that no longer owe anything: cancelled (already settled) or completed (fully paid). */
+function isLive(stream: Stream): boolean {
+  return stream.status !== "cancelled" && stream.status !== "completed";
+}
+
 /**
  * Groups live streams by token contract id and sums their outstanding amount
- * (`totalAmount - withdrawnAmount`) as BigInt. Streams whose token metadata is
- * unknown are skipped rather than guessed at.
+ * (`totalAmount - withdrawnAmount`) as BigInt. Cancelled and completed streams
+ * are left out. Streams whose token metadata is unknown are skipped rather
+ * than guessed at.
  */
 export function summarizeOutgoingByToken(
   streams: Stream[],
@@ -45,17 +51,18 @@ export function summarizeOutgoingByToken(
   const byToken = new Map<string, OutgoingTokenTotal>();
 
   for (const stream of streams) {
-    if (!stream.isActive) continue;
-    const info = getInfo(stream.tokenContractId);
+    if (!isLive(stream)) continue;
+    const contractId = stream.token.contractId;
+    const info = getInfo(contractId);
     if (!info) continue;
 
-    const outstanding = stream.totalAmount - stream.withdrawnAmount;
-    const existing = byToken.get(stream.tokenContractId);
+    const outstanding = BigInt(stream.totalAmount) - BigInt(stream.withdrawnAmount);
+    const existing = byToken.get(contractId);
     if (existing) {
       existing.amount += outstanding;
     } else {
-      byToken.set(stream.tokenContractId, {
-        contractId: stream.tokenContractId,
+      byToken.set(contractId, {
+        contractId,
         symbol: info.symbol,
         decimals: info.decimals,
         amount: outstanding,

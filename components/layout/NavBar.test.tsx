@@ -55,7 +55,10 @@ describe("NavBar", () => {
     const [toggle] = findAll(render("/sending", false), (el) => el.props["aria-label"] === "Toggle navigation menu");
     (toggle.props.onClick as () => void)();
 
-    const updater = setMobileOpen.mock.calls[0][0] as (open: boolean) => boolean;
+    const call = setMobileOpen.mock.calls[0];
+    if (!call) throw new Error("Expected setMobileOpen to have been called");
+    const updater = (call[0] ?? undefined) as ((open: boolean) => boolean) | undefined;
+    if (!updater) throw new Error("Expected call[0] to be a function");
     expect(updater(false)).toBe(true);
     expect(updater(true)).toBe(false);
   });
@@ -75,7 +78,9 @@ describe("NavBar", () => {
 
   it("closes the mobile menu when a link is chosen", () => {
     const [, mobile] = navs(render("/sending", true));
-    (linksIn(mobile)[0].props.onClick as () => void)();
+    const firstLink = linksIn(mobile)[0];
+    if (!firstLink) throw new Error("Expected at least one link in mobile nav");
+    (firstLink.props.onClick as () => void)();
 
     expect(setMobileOpen).toHaveBeenCalledWith(false);
   });

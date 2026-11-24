@@ -3,6 +3,12 @@
  * Each wallet implementation adapts to this interface, allowing the app
  * to remain wallet-agnostic while supporting multiple signing providers.
  */
+import {
+  FREIGHTER_NOT_INSTALLED_DESC,
+  FREIGHTER_ACCESS_DENIED_DESC,
+  FREIGHTER_TX_REJECTED_DESC,
+  WALLET_UNKNOWN_ERROR_DESC,
+} from "@/lib/messages";
 
 export interface WalletAdapter {
   /** Display name for the wallet (e.g., "Freighter", "Stellar Lab") */
@@ -122,21 +128,21 @@ function createFreighterAdapter(): WalletAdapter {
     },
     describeError(error) {
       if (error instanceof WalletNotInstalledError) {
-        return "Freighter wallet isn't installed. Install it from freighter.app to connect.";
+        return FREIGHTER_NOT_INSTALLED_DESC;
       }
       if (error instanceof WalletAccessDeniedError) {
-        return "Wallet access was denied. Please approve the connection request in Freighter.";
+        return FREIGHTER_ACCESS_DENIED_DESC;
       }
       if (error instanceof WalletNetworkMismatchError) {
         return error.message;
       }
       if (error instanceof Error) {
         if (/declined|rejected|user cancelled/i.test(error.message)) {
-          return "Transaction was rejected in your wallet.";
+          return FREIGHTER_TX_REJECTED_DESC;
         }
         return error.message;
       }
-      return "An unknown wallet error occurred.";
+      return WALLET_UNKNOWN_ERROR_DESC;
     },
   };
 }

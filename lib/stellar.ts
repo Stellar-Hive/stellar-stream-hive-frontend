@@ -105,5 +105,5 @@ export const NATIVE_XLM_CONTRACT_IDS: Record<string, string> = {
 };
 
 export function nativeTokenContractId(): string {
-  return NATIVE_XLM_CONTRACT_IDS[NETWORK] || NATIVE_XLM_CONTRACT_IDS.TESTNET;
+  return NATIVE_XLM_CONTRACT_IDS[NETWORK] ?? NATIVE_XLM_CONTRACT_IDS.TESTNET;
 }

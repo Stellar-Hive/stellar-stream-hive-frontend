@@ -5,8 +5,10 @@ import {
   csvFilename,
   filterStreams,
   matchesFilter,
+  parseStreamListParams,
   searchStreams,
   sortStreams,
+  streamListParamsToSearchParams,
   streamsToCsv,
 } from "./streamList";
 import type { Stream, StreamStatus } from "@/types";
@@ -47,7 +49,9 @@ describe("filtering", () => {
   it("selects terminal states exactly", () => {
     expect(filterStreams(all, "completed").map((s) => s.id)).toEqual(["4"]);
     expect(filterStreams(all, "cancelled").map((s) => s.id)).toEqual(["5"]);
-    expect(matchesFilter(all[3], "live")).toBe(false);
+    const stream3 = all[3];
+    if (!stream3) throw new Error("Expected all[3] to exist");
+    expect(matchesFilter(stream3, "live")).toBe(false);
   });
   it("counts are consistent with the filters", () => {
     expect(countByFilter(all)).toEqual({ all: 5, live: 3, completed: 1, cancelled: 1 });
@@ -158,6 +162,42 @@ describe("csvCell", () => {
   });
 });
 
+describe("parseStreamListParams", () => {
+  it("falls back to defaults for an empty query string", () => {
+    expect(parseStreamListParams(new URLSearchParams(""))).toEqual({ filter: "all", query: "", sort: "default" });
+  });
+  it("reads status, q and sort", () => {
+    expect(parseStreamListParams(new URLSearchParams("status=live&q=alice&sort=newest"))).toEqual({
+      filter: "live",
+      query: "alice",
+      sort: "newest",
+    });
+  });
+  it("ignores an unknown status or sort value", () => {
+    expect(parseStreamListParams(new URLSearchParams("status=bogus&sort=bogus"))).toEqual({
+      filter: "all",
+      query: "",
+      sort: "default",
+    });
+  });
+  it("passes a blank q through as an empty query", () => {
+    expect(parseStreamListParams(new URLSearchParams("q=")).query).toBe("");
+  });
+});
+
+describe("streamListParamsToSearchParams", () => {
+  it("is empty when every field is at its default", () => {
+    expect(streamListParamsToSearchParams({ filter: "all", query: "", sort: "default" }).toString()).toBe("");
+  });
+  it("round-trips through parseStreamListParams", () => {
+    const state = { filter: "cancelled" as const, query: "bob", sort: "largest" as const };
+    expect(parseStreamListParams(streamListParamsToSearchParams(state))).toEqual(state);
+  });
+  it("omits q for a whitespace-only query", () => {
+    expect(streamListParamsToSearchParams({ filter: "all", query: "   ", sort: "default" }).toString()).toBe("");
+  });
+});
+
 describe("csvFilename", () => {
   it("appends the local date as YYYY-MM-DD", () => {
     expect(csvFilename("stellar-stream-hive-sending-streams", new Date(2026, 9, 18, 23, 30))).toBe(
@@ -194,6 +234,7 @@ describe("streamsToCsv", () => {
     const [, row] = streamsToCsv([stream("7", "cancelled", { withdrawnAmount: "2500000", cancellable: false })])
       .trim()
       .split("\r\n");
+    if (!row) throw new Error("Expected a data row");
     const cells = row.split(",");
     expect(cells[1]).toBe("cancelled");
     expect(cells[5]).toBe("1.5");
@@ -210,6 +251,7 @@ describe("streamsToCsv", () => {
     ])
       .trim()
       .split("\r\n");
+    if (!row) throw new Error("Expected a data row");
     const cells = row.split(",");
     expect(cells[4]).toBe("NFT");
     expect(cells[5]).toBe("1234567");

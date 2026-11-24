@@ -12,5 +12,5 @@ export const PROGRESS_MESSAGES: Record<TransactionStep, string> = {
 };
 
 export function getProgressMessage(step: TransactionStep): string {
-  return PROGRESS_MESSAGES[step];
+  return PROGRESS_MESSAGES[step] ?? "";
 }

@@ -43,14 +43,14 @@ describe("groupOutgoingByToken", () => {
   it("never goes negative when more has been withdrawn than the total", () => {
     const groups = groupOutgoingByToken([stream("USDC", "5", "9")]);
 
-    expect(groups[0].amount).toBe(0n);
+    expect(groups[0]?.amount).toBe(0n);
   });
 
   it("keeps full precision for amounts beyond Number.MAX_SAFE_INTEGER", () => {
     const big = "170141183460469231731687303715884105727"; // i128::MAX
     const groups = groupOutgoingByToken([stream("USDC", big, "0"), stream("USDC", "1", "0")]);
 
-    expect(groups[0].amount).toBe(BigInt(big) + 1n);
+    expect(groups[0]?.amount).toBe(BigInt(big) + 1n);
   });
 
   it("returns an empty list for no streams", () => {

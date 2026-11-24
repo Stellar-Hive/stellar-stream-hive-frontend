@@ -34,6 +34,9 @@ function readCommitSha() {
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Produces a self-contained `standalone` output that bundles only the
+  // server files needed to run, used by the Dockerfile for production images.
+  output: "standalone",
   env: {
     NEXT_PUBLIC_APP_VERSION: readAppVersion(),
     NEXT_PUBLIC_APP_COMMIT: readCommitSha(),

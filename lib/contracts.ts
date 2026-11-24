@@ -18,7 +18,7 @@
 import type { rpc as SorobanRpcType } from "@stellar/stellar-sdk";
 import { fetchLatestLedgerSnapshot, getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./stellar";
 import { signWithFreighter } from "./freighter";
-import { isUnfundedAccountError, UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
+import { describeFailedTransaction, isUnfundedAccountError, UNFUNDED_ACCOUNT_MESSAGE } from "./contractErrors";
 import { makeTokenResolver, mapRawStream, type RawStreamRecord } from "./streamMapping";
 import { withTokenMetadata } from "./tokens";
 import type { Stream } from "@/types";
@@ -29,6 +29,21 @@ let _sdk: typeof import("@stellar/stellar-sdk") | null = null;
 async function getSdk(): Promise<typeof import("@stellar/stellar-sdk")> {
   if (!_sdk) _sdk = await import("@stellar/stellar-sdk");
   return _sdk;
+}
+
+/**
+ * Thrown when a submitted transaction was not confirmed within the polling
+ * window. The transaction may still be included in a ledger afterwards, so the
+ * error carries its hash: callers show it and point the user at the explorer
+ * instead of inviting a blind retry that could create a second stream.
+ */
+export class TransactionTimeoutError extends Error {
+  constructor(public readonly hash: string) {
+    super(
+      `Your transaction may still confirm. Check the hash on the explorer before retrying: ${hash}`
+    );
+    this.name = "TransactionTimeoutError";
+  }
 }
 
 export class ContractNotConfiguredError extends Error {
@@ -87,7 +102,8 @@ async function invokeContract(
   method: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[],
-  sourcePublicKey: string
+  sourcePublicKey: string,
+  signal?: AbortSignal
 ): Promise<{ hash: string; returnValue: unknown }> {
   const { Contract, TransactionBuilder, BASE_FEE } = await getSdk();
   const server = getSorobanServer();
@@ -122,25 +138,47 @@ async function invokeContract(
   }
 
   const hash = sendResult.hash;
-  const result = await pollTransaction(server, hash);
+  const result = await pollTransaction(server, hash, { signal });
   return { hash, returnValue: result };
 }
 
-async function pollTransaction(server: SorobanRpc.Server, hash: string, timeoutMs: number = 30_000): Promise<unknown> {
+export async function pollTransaction(
+  server: SorobanRpc.Server,
+  hash: string,
+  timeoutMs: number = 30_000,
+  pollIntervalMs: number = 1500
+): Promise<unknown> {
   const start = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const response = await server.getTransaction(hash);
-    if (response.status === "SUCCESS") {
-      return response.returnValue ? scValToNative(response.returnValue) : null;
+
+  for (let attempt = 0; ; attempt++) {
+    if (signal?.aborted) throw new TransactionPollAbortedError(hash);
+
+    let response;
+    try {
+      response = await server.getTransaction(hash);
+    } catch (err) {
+      // An RPC failure is not "still pending": say so instead of retrying silently.
+      const raw = err instanceof Error ? err.message : String(err);
+      throw new Error(`Could not read the status of transaction ${hash}: ${raw}`);
     }
-    if (response.status === "FAILED") {
-      throw new Error("Transaction failed on-chain. See Stellar Expert for details.");
+
+    const status = response.status as PollStatus;
+    switch (status) {
+      case "SUCCESS":
+        return response.returnValue ? scValToNative(response.returnValue) : null;
+      case "FAILED":
+        throw new Error(describeFailedTransaction(response));
+      case "NOT_FOUND":
+        // Not in a ledger yet: keep waiting, with a gentle backoff.
+        break;
+      default:
+        throw new Error(`Unexpected transaction status from the RPC: ${String(status)}`);
     }
+
     if (Date.now() - start > timeoutMs) {
-      throw new Error("Timed out waiting for transaction confirmation.");
+      throw new TransactionTimeoutError(hash);
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 }
 
@@ -189,7 +227,7 @@ export async function fetchStreamOnChain(streamId: string): Promise<Stream | nul
     makeTokenResolver(nativeTokenContractId())
   );
   const [withToken] = await withTokenMetadata([stream]);
-  return withToken;
+  return withToken ?? stream;
 }
 
 /** Calls create_stream on the Stream contract. Returns the new stream's id and tx hash. */
@@ -202,6 +240,8 @@ export async function createStreamOnChain(params: {
   endLedger: number;
   cliffLedger?: number;
   cancellable: boolean;
+  /** Abort to stop waiting for confirmation (the transaction itself is not recalled). */
+  signal?: AbortSignal;
 }): Promise<{ streamId: string; hash: string }> {
   const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
@@ -217,7 +257,13 @@ export async function createStreamOnChain(params: {
     nativeToScVal(params.cancellable, { type: "bool" }),
   ];
 
-  const { hash, returnValue } = await invokeContract(contractId, "create_stream", args, params.sender);
+  const { hash, returnValue } = await invokeContract(
+    contractId,
+    "create_stream",
+    args,
+    params.sender,
+    params.signal
+  );
   const streamId = typeof returnValue === "bigint" ? returnValue.toString() : String(returnValue);
   return { streamId, hash };
 }
@@ -227,6 +273,7 @@ export async function withdrawOnChain(params: {
   streamId: string;
   recipient: string;
   amount: bigint;
+  signal?: AbortSignal;
 }): Promise<{ hash: string }> {
   const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
@@ -236,16 +283,21 @@ export async function withdrawOnChain(params: {
     nativeToScVal(BigInt(params.streamId), { type: "u64" }),
     nativeToScVal(params.amount, { type: "i128" }),
   ];
-  const { hash } = await invokeContract(contractId, "withdraw", args, params.recipient);
+  const { hash } = await invokeContract(contractId, "withdraw", args, params.recipient, params.signal);
   return { hash };
 }
 
 /** Calls cancel_stream on the Stream contract, settling the split between sender and recipient. */
-export async function cancelStreamOnChain(params: { streamId: string; sender: string }): Promise<{ hash: string }> {
+export async function cancelStreamOnChain(params: {
+  streamId: string;
+  sender: string;
+  signal?: AbortSignal;
+}): Promise<{ hash: string }> {
+  const { Address, nativeToScVal } = await getSdk();
   const contractId = getStreamContractId();
   // Contract signature: cancel_stream(sender, stream_id)
   const args = [new Address(params.sender).toScVal(), nativeToScVal(BigInt(params.streamId), { type: "u64" })];
-  const { hash } = await invokeContract(contractId, "cancel_stream", args, params.sender);
+  const { hash } = await invokeContract(contractId, "cancel_stream", args, params.sender, params.signal);
   return { hash };
 }
 
