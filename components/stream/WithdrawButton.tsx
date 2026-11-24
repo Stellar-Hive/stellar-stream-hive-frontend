@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { fetchWithdrawableOnChain, withdrawOnChain, ContractNotConfiguredError } from "@/lib/contracts";
+import {
+  fetchWithdrawableOnChain,
+  withdrawOnChain,
+  ContractNotConfiguredError,
+  TransactionTimeoutError,
+} from "@/lib/contracts";
+import { TransactionTimeoutNotice } from "@/components/ui/TransactionTimeoutNotice";
 import { describeFreighterError } from "@/lib/freighter";
 import { formatBaseUnits, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
@@ -50,6 +56,7 @@ export function WithdrawButton({
   const [useCustom, setUseCustom] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [timedOutHash, setTimedOutHash] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isFillingMax, setIsFillingMax] = useState(false);
 
@@ -58,6 +65,7 @@ export function WithdrawButton({
 
   async function handleWithdraw() {
     setError(null);
+    setTimedOutHash(null);
     setStatus("checking");
     try {
       const actualWithdrawable = await fetchWithdrawableOnChain(streamId);
@@ -88,6 +96,11 @@ export function WithdrawButton({
       setStatus("success");
       onWithdrawn?.();
     } catch (err) {
+      if (err instanceof TransactionTimeoutError) {
+        setTimedOutHash(err.hash);
+        setStatus("error");
+        return;
+      }
       if (err instanceof ContractNotConfiguredError) {
         setError(err.message);
       } else {
@@ -213,6 +226,7 @@ export function WithdrawButton({
           {error}
         </p>
       )}
+      {timedOutHash && <TransactionTimeoutNotice hash={timedOutHash} className="mb-3 text-sm text-danger" />}
 
       <div className="flex gap-2">
         <button type="button" onClick={handleWithdraw} disabled={isBusy} className="btn-primary flex-1">

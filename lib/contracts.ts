@@ -31,6 +31,21 @@ async function getSdk(): Promise<typeof import("@stellar/stellar-sdk")> {
   return _sdk;
 }
 
+/**
+ * Thrown when a submitted transaction was not confirmed within the polling
+ * window. The transaction may still be included in a ledger afterwards, so the
+ * error carries its hash: callers show it and point the user at the explorer
+ * instead of inviting a blind retry that could create a second stream.
+ */
+export class TransactionTimeoutError extends Error {
+  constructor(public readonly hash: string) {
+    super(
+      `Your transaction may still confirm. Check the hash on the explorer before retrying: ${hash}`
+    );
+    this.name = "TransactionTimeoutError";
+  }
+}
+
 export class ContractNotConfiguredError extends Error {
   constructor(public readonly contractName: string) {
     super(
@@ -126,7 +141,12 @@ async function invokeContract(
   return { hash, returnValue: result };
 }
 
-async function pollTransaction(server: SorobanRpc.Server, hash: string, timeoutMs: number = 30_000): Promise<unknown> {
+export async function pollTransaction(
+  server: SorobanRpc.Server,
+  hash: string,
+  timeoutMs: number = 30_000,
+  pollIntervalMs: number = 1500
+): Promise<unknown> {
   const start = Date.now();
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -138,9 +158,9 @@ async function pollTransaction(server: SorobanRpc.Server, hash: string, timeoutM
       throw new Error("Transaction failed on-chain. See Stellar Expert for details.");
     }
     if (Date.now() - start > timeoutMs) {
-      throw new Error("Timed out waiting for transaction confirmation.");
+      throw new TransactionTimeoutError(hash);
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 }
 

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { cancelStreamOnChain, fetchStreamOnChain, ContractNotConfiguredError } from "@/lib/contracts";
+import {
+  cancelStreamOnChain,
+  fetchStreamOnChain,
+  ContractNotConfiguredError,
+  TransactionTimeoutError,
+} from "@/lib/contracts";
+import { TransactionTimeoutNotice } from "@/components/ui/TransactionTimeoutNotice";
 import { fetchLatestLedgerSnapshot } from "@/lib/stellar";
 import { computeCancelSplit, computeStreamedAmount } from "@/lib/streaming";
 import { describeFreighterError } from "@/lib/freighter";
@@ -57,6 +63,7 @@ export function CancelButton({
   const [status, setStatus] = useState<Status>("idle");
   const [split, setSplit] = useState<Split | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [timedOutHash, setTimedOutHash] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -138,12 +145,18 @@ export function CancelButton({
   async function handleConfirm() {
     setStatus("signing");
     setError(null);
+    setTimedOutHash(null);
     try {
       const result = await cancelStreamOnChain({ streamId, sender: senderAddress });
       setTxHash(result.hash);
       setStatus("success");
       onCancelled?.();
     } catch (err) {
+      if (err instanceof TransactionTimeoutError) {
+        setTimedOutHash(err.hash);
+        setStatus("error");
+        return;
+      }
       setError(describeFreighterError(err));
       setStatus("error");
     }
@@ -154,6 +167,7 @@ export function CancelButton({
     setStatus("idle");
     setSplit(null);
     setError(null);
+    setTimedOutHash(null);
     setTxHash(null);
     triggerRef.current?.focus();
   }
@@ -190,10 +204,13 @@ export function CancelButton({
           </div>
         )}
 
-        {status === "error" && (
+        {status === "error" && error && (
           <p role="alert" className="mb-4 text-sm text-danger">
             {error}
           </p>
+        )}
+        {status === "error" && timedOutHash && (
+          <TransactionTimeoutNotice hash={timedOutHash} className="mb-4 text-sm text-danger" />
         )}
 
         {split && (status === "confirming" || status === "signing") && (
