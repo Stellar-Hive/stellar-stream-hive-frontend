@@ -144,6 +144,55 @@ describe("NETWORK validation", () => {
   });
 });
 
+// === NETWORK_PASSPHRASE tests
+describe("NETWORK_PASSPHRASE", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("uses Networks.TESTNET passphrase when NETWORK is TESTNET", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "TESTNET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.TESTNET);
+  });
+
+  it("uses Networks.PUBLIC passphrase when NETWORK is PUBLIC", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "PUBLIC");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.PUBLIC);
+  });
+
+  it("uses Networks.FUTURENET passphrase when NETWORK is FUTURENET", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "FUTURENET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.FUTURENET);
+  });
+
+  it("falls back to Networks.TESTNET passphrase for an unknown network value", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "UNKNOWN_NET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.TESTNET);
+  });
+
+  it("honours the NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE override", async () => {
+    const override = "Override Passphrase;";
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "FUTURENET");
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE", override);
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    expect(NETWORK_PASSPHRASE).toBe(override);
+  });
+});
+
 // === Explorer URL matrix
 describe("explorer URL matrix", () => {
   const ACCOUNT = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
