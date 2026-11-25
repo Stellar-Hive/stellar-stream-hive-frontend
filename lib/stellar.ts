@@ -12,7 +12,11 @@ export const NETWORK = (process.env.NEXT_PUBLIC_STELLAR_NETWORK || "TESTNET") as
 
 export const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ||
-  (NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET);
+  (NETWORK === "PUBLIC"
+    ? Networks.PUBLIC
+    : NETWORK === "FUTURENET"
+    ? Networks.FUTURENET
+    : Networks.TESTNET);
 
 export const SOROBAN_RPC_URL =
   process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";

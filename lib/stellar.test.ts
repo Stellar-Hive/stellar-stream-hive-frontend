@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { StrKey } from "@stellar/stellar-sdk";
-import { isValidRecipientAddress, isValidStellarAddress } from "./stellar";
+import { NETWORK_PASSPHRASE, isValidRecipientAddress, isValidStellarAddress } from "./stellar";
 
 const ACCOUNT = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
 const CONTRACT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
+describe("NETWORK_PASSPHRASE", () => {
+  it("resolves the proper network passphrase", () => {
+    expect(typeof NETWORK_PASSPHRASE).toBe("string");
+    expect(NETWORK_PASSPHRASE.length).toBeGreaterThan(0);
+  });
+});
 
 describe("isValidStellarAddress", () => {
   it("accepts valid account and contract StrKeys for their matching kinds", () => {
