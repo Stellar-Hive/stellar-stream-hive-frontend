@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { addDays } from "date-fns";
 import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
+import { formatUtcOffset } from "@/lib/format";
 import { ONE_DAY_MS } from "@/lib/constants";
 import { formatNumber, formatUtcOffset } from "@/lib/format";
+
+const DURATION_PRESETS_DAYS = [7, 14, 30, 90, 180, 365];
 
 export interface ScheduleInputProps {
   startDate: Date;
