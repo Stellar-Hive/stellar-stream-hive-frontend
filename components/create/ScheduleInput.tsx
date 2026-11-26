@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { addDays } from "date-fns";
 import { fetchLatestLedgerSnapshot, type LedgerSnapshot } from "@/lib/stellar";
 import { dateToEstimatedLedger } from "@/lib/streaming";
+import { formatUtcOffset } from "@/lib/format";
 import { ONE_DAY_MS } from "@/lib/constants";
+import { formatNumber, formatUtcOffset } from "@/lib/format";
+
+const DURATION_PRESETS_DAYS = [7, 14, 30, 90, 180, 365];
 
 export interface ScheduleInputProps {
   startDate: Date;
@@ -77,7 +81,7 @@ export function ScheduleInput({
   function ledgerLabel(date: Date): string {
     if (!reference) return "";
     const ledger = dateToEstimatedLedger(date, { ledger: reference.ledger, timestampMs: reference.timestampMs });
-    return `≈ ledger ${ledger.toLocaleString()}`;
+    return `≈ ledger ${formatNumber(ledger)}`;
   }
 
   return (
@@ -131,9 +135,7 @@ export function ScheduleInput({
           <p className="mt-1 text-xs text-muted">{ledgerLabel(endDate)}</p>
         </div>
       </div>
-      {utcOffset && (
-        <p className="text-xs text-muted">Times are in your local timezone ({utcOffset}).</p>
-      )}
+      {utcOffset && <p className="text-xs text-muted">Times are in your local timezone ({utcOffset}).</p>}
 
       <div>
         <label className="flex items-center gap-2 text-sm text-muted">
@@ -150,7 +152,11 @@ export function ScheduleInput({
         </label>
         {hasCliff && (
           <div className="mt-2">
+            <label className="sr-only" htmlFor="cliff-date">
+              Cliff date
+            </label>
             <input
+              id="cliff-date"
               type="datetime-local"
               value={toLocalInputValue(cliffDate ?? startDate)}
               onChange={(e) => e.target.value && onCliffDateChange(new Date(e.target.value))}

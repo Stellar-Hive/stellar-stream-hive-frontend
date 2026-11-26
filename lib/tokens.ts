@@ -4,10 +4,75 @@
  * and sanitising logic lives in `tokenMetadata.ts`; this file is just the
  * Soroban RPC glue plus a shared per-session cache.
  */
-import { Account, BASE_FEE, Contract, Keypair, TransactionBuilder, rpc as SorobanRpc, scValToNative } from "@stellar/stellar-sdk";
+import {
+  Account,
+  BASE_FEE,
+  Contract,
+  Keypair,
+  TransactionBuilder,
+  rpc as SorobanRpc,
+  scValToNative,
+} from "@stellar/stellar-sdk";
 import { getSorobanServer, nativeTokenContractId, NETWORK_PASSPHRASE } from "./stellar";
 import { createTokenMetadataCache, enrichStreamTokens, type RawTokenMetadata } from "./tokenMetadata";
 import type { Stream, TokenInfo } from "@/types";
+
+/** Per-token outgoing commitment: `totalAmount - withdrawnAmount`, summed as BigInt. */
+export interface OutgoingTokenTotal {
+  contractId: string;
+  symbol: string;
+  decimals: number;
+  /** Sum of `totalAmount - withdrawnAmount` over the live streams for this token. */
+  amount: bigint;
+}
+
+export interface OutgoingSummary {
+  /** One entry per distinct token contract id, in first-seen order. */
+  totals: OutgoingTokenTotal[];
+  /** True when every live stream uses the same token (or there are none). */
+  singleToken: boolean;
+}
+
+/** Streams that no longer owe anything: cancelled (already settled) or completed (fully paid). */
+function isLive(stream: Stream): boolean {
+  return stream.status !== "cancelled" && stream.status !== "completed";
+}
+
+/**
+ * Groups live streams by token contract id and sums their outstanding amount
+ * (`totalAmount - withdrawnAmount`) as BigInt. Cancelled and completed streams
+ * are left out. Streams whose token metadata is unknown are skipped rather
+ * than guessed at.
+ */
+export function summarizeOutgoingByToken(
+  streams: Stream[],
+  getInfo: (contractId: string) => TokenInfo
+): OutgoingSummary {
+  const byToken = new Map<string, OutgoingTokenTotal>();
+
+  for (const stream of streams) {
+    if (!isLive(stream)) continue;
+    const contractId = stream.token.contractId;
+    const info = getInfo(contractId);
+    if (!info) continue;
+
+    const outstanding = BigInt(stream.totalAmount) - BigInt(stream.withdrawnAmount);
+    const existing = byToken.get(contractId);
+    if (existing) {
+      existing.amount += outstanding;
+    } else {
+      byToken.set(contractId, {
+        contractId,
+        symbol: info.symbol,
+        decimals: info.decimals,
+        amount: outstanding,
+      });
+    }
+  }
+
+  const totals = [...byToken.values()];
+  return { totals, singleToken: totals.length <= 1 };
+}
 
 async function simulateRead(contractId: string, method: "symbol" | "decimals"): Promise<unknown> {
   // Simulation needs a source account but never submits, so a throwaway keypair is fine.

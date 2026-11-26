@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CreateStreamForm } from "@/components/create/CreateStreamForm";
 
 export default function NewStreamPage() {
@@ -10,7 +11,12 @@ export default function NewStreamPage() {
           from the start date to the end date.
         </p>
       </div>
-      <CreateStreamForm />
+      {/* CreateStreamForm reads the recipient/amount/token/cancellable query params (e.g. from
+          a payroll link or the "Duplicate" action) via useSearchParams, which requires a
+          Suspense boundary. */}
+      <Suspense fallback={null}>
+        <CreateStreamForm />
+      </Suspense>
     </div>
   );
 }

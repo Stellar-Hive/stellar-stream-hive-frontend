@@ -23,6 +23,14 @@ const XLM_TOKEN: TokenInfo = { contractId: nativeTokenContractId(), symbol: "XLM
 export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLookupChange }: AmountInputProps) {
   const isCustomToken = token.contractId !== XLM_TOKEN.contractId;
   const [detection, setDetection] = useState<Detection>("idle");
+  // Raw text for the decimals field so it can be cleared while typing; the
+  // stored token.decimals is always an integer.
+  const [decimalsText, setDecimalsText] = useState(String(token.decimals));
+
+  // Keep the text in sync when decimals change from outside (e.g. detection).
+  useEffect(() => {
+    setDecimalsText(String(token.decimals));
+  }, [token.decimals]);
 
   // Keep the latest callbacks in refs so the lookup effect depends only on the contract id.
   const onTokenChangeRef = useRef(onTokenChange);
@@ -58,6 +66,9 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
   const amountError = amountCheck && !amountCheck.ok ? amountCheck.reason : null;
   const amountIsValid = amountError === null;
 
+  const contractIdInvalid = token.contractId !== "" && !isValidStellarAddress(token.contractId, "contract");
+  const contractIdError = contractIdInvalid ? "Enter a valid Stellar contract ID." : null;
+
   return (
     <div className="space-y-4">
       <div>
@@ -72,9 +83,12 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
             value={amount}
             onChange={(e) => onAmountChange(e.target.value)}
             placeholder="0.00"
+            aria-invalid={!amountIsValid}
+            aria-describedby={amountError ? "amount-error" : undefined}
             className={`input-field flex-1 ${!amountIsValid ? "border-danger" : ""}`}
           />
           <select
+            aria-label="Token"
             value={isCustomToken ? "custom" : "xlm"}
             onChange={(e) => {
               if (e.target.value === "xlm") {
@@ -89,7 +103,11 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
             <option value="custom">Custom token</option>
           </select>
         </div>
-        {amountError && <p className="mt-1.5 text-xs text-danger">{amountError}</p>}
+        {amountError && (
+          <p id="amount-error" className="mt-1.5 text-xs text-danger">
+            {amountError}
+          </p>
+        )}
       </div>
 
       {isCustomToken && (
@@ -105,11 +123,18 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
               onChange={(e) => onTokenChange({ ...token, contractId: e.target.value.trim() })}
               placeholder="C..."
               spellCheck={false}
-              className={`input-field font-mono text-sm ${
-                token.contractId && !isValidStellarAddress(token.contractId, "contract") ? "border-danger" : ""
-              }`}
+              aria-invalid={contractIdInvalid}
+              aria-describedby={contractIdError ? "token-contract-error" : undefined}
+              className={`input-field font-mono text-sm ${contractIdInvalid ? "border-danger" : ""}`}
             />
-            {detection === "checking" && <p className="mt-1.5 text-xs text-muted">Reading token details from the contract…</p>}
+            {contractIdError && (
+              <p id="token-contract-error" className="mt-1.5 text-xs text-danger">
+                {contractIdError}
+              </p>
+            )}
+            {detection === "checking" && (
+              <p className="mt-1.5 text-xs text-muted">Reading token details from the contract…</p>
+            )}
             {detected && (
               <p className="mt-1.5 text-xs text-primary">
                 Detected {token.symbol} with {token.decimals} decimals from the token contract.
@@ -117,8 +142,8 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
             )}
             {detection === "manual" && (
               <p className="mt-1.5 text-xs text-warning">
-                Couldn&apos;t read this token&apos;s details. Enter the symbol and decimals yourself and double-check the
-                decimals — a wrong value changes how much is deposited.
+                Couldn&apos;t read this token&apos;s details. Enter the symbol and decimals yourself and double-check
+                the decimals — a wrong value changes how much is deposited.
               </p>
             )}
           </div>
@@ -145,9 +170,18 @@ export function AmountInput({ amount, onAmountChange, token, onTokenChange, onLo
               type="number"
               min={0}
               max={18}
-              value={token.decimals}
+              step={1}
+              value={decimalsText}
               readOnly={detected}
-              onChange={(e) => onTokenChange({ ...token, decimals: Math.min(18, Math.max(0, Number(e.target.value))) })}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setDecimalsText(raw);
+                const parsed = Number(raw);
+                if (raw.trim() === "" || !Number.isFinite(parsed)) return;
+                const decimals = Math.min(18, Math.max(0, Math.trunc(parsed)));
+                if (decimals !== token.decimals) onTokenChange({ ...token, decimals });
+              }}
+              onBlur={() => setDecimalsText(String(token.decimals))}
               className="input-field"
             />
           </div>

@@ -7,11 +7,21 @@ application.
 
 ## Related repositories
 
-| Repo | Purpose |
-| --- | --- |
-| [`stellar-stream-hive-contract`](https://github.com/Stellar-Hive/stellar-stream-hive-contract) | Soroban smart contracts (Stream, Vault, Registry) |
-| [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api) | Indexer/registry API used for stats and stream listings |
-| `stellar-stream-hive-frontend` (this repo) | Next.js web app |
+| Repo                                                                                           | Purpose                                                 |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [`stellar-stream-hive-contract`](https://github.com/Stellar-Hive/stellar-stream-hive-contract) | Soroban smart contracts (Stream, Vault, Registry)       |
+| [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api)           | Indexer/registry API used for stats and stream listings |
+| `stellar-stream-hive-frontend` (this repo)                                                     | Next.js web app                                         |
+
+## Screenshots
+
+Captured against testnet with throwaway test accounts — no real addresses, balances, or
+transaction hashes. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for the
+capture steps and the full expected set; the images below are pending capture.
+
+| The live, ticking balance                                    | Create a stream                                         | Streams you're sending                             |
+| ------------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------- |
+| ![Receiving balance](docs/screenshots/receiving-balance.png) | ![Create stream form](docs/screenshots/streams-new.png) | ![Sending list](docs/screenshots/sending-list.png) |
 
 ## The signature feature: LiveBalance
 
@@ -43,15 +53,14 @@ for a transaction.
 | `lint` | Run ESLint |
 | `typecheck` | Run the TypeScript compiler with `--noEmit` |
 | `test` | Run Vitest once |
-| `test:watch` | Run Vitest in watch mode |
+| `test:coverage` | Run Vitest once with coverage reporting |
 
 ## Tech stack
 
-- [Next.js 14](https://nextjs.org/) (App Router) + TypeScript
+- [Next.js 15](https://nextjs.org/) (App Router) + [React 19](https://react.dev/) + TypeScript
 - [Tailwind CSS](https://tailwindcss.com/) (dark mode by default)
-- [`@stellar/stellar-sdk`](https://github.com/stellar/js-stellar-sdk) for building/simulating/submitting Soroban transactions
+- [`@stellar/stellar-sdk`](https://github.com/stellar/js-stellar-sdk) 13.1.0 for building/simulating/submitting Soroban transactions
 - [`@stellar/freighter-api`](https://github.com/stellar/freighter) for wallet connection and signing
-- [Recharts](https://recharts.org/) for data visualization
 - [date-fns](https://date-fns.org/) for date formatting
 
 ## Getting started
@@ -74,26 +83,98 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint` | Runs ESLint with the `next/core-web-vitals` rules |
 | `npm run typecheck` | Runs `tsc --noEmit` in strict mode |
 | `npm test` | Runs the Vitest unit tests once |
-| `npm run test:watch` | Runs the Vitest unit tests and re-runs them on every file change |
+| `npm run test:coverage` | Runs the Vitest unit tests once and reports coverage |
 
 ## Environment variables
 
-See [`.env.example`](./.env.example) for the full, documented list. In short:
+The table below lists every variable. Copy `.env.example` to `.env.local` and fill in the values before running `npm run dev` or building the production image.
 
-- `NEXT_PUBLIC_STREAM_CONTRACT_ID`, `NEXT_PUBLIC_VAULT_CONTRACT_ID`, `NEXT_PUBLIC_REGISTRY_CONTRACT_ID` —
-  Soroban contract IDs. `.env.example` ships with the **testnet** deployment from 2026-10-12
-  (recorded in the contracts repo's `DEPLOYMENTS.md`), so `cp .env.example .env.local` gives a
-  working testnet setup. A redeploy creates new ids; update these from `scripts/deploy.sh`'s output.
-  On any other network leave them blank and contract-calling features show a clear "not yet
-  configured" state rather than failing silently.
-- `NEXT_PUBLIC_STELLAR_NETWORK`, `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE`,
-  `NEXT_PUBLIC_SOROBAN_RPC_URL`, `NEXT_PUBLIC_HORIZON_URL` — network configuration, defaulted to
-  Stellar testnet.
-- `NEXT_PUBLIC_API_BASE_URL` — base URL for the indexer API (`stellar-stream-hive-api`), used for
-  platform-wide stats and listing streams by sender/recipient. If unset, the app shows a
-  graceful empty/loading state rather than fabricating numbers.
+| Variable | Required | Default | Effect |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_STREAM_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Stream contract address. Used for `create_stream`, `withdraw`, `cancel_stream`, and `get_stream`. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_VAULT_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Vault contract address. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_REGISTRY_CONTRACT_ID` | Yes (for contract actions) | *(testnet id in `.env.example`)* | Soroban Registry contract address. Absent → "not yet configured" state. |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | No | `TESTNET` | Stellar network. One of `TESTNET`, `PUBLIC`, `FUTURENET`. Drives the network notice badge and Stellar Expert links. |
+| `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE` | No | Stellar testnet passphrase | Network passphrase used when building and signing transactions. Must match `NEXT_PUBLIC_STELLAR_NETWORK`. |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | No | `https://soroban-testnet.stellar.org` | Soroban RPC endpoint for simulating and submitting transactions. |
+| `NEXT_PUBLIC_API_BASE_URL` | No | *(empty)* | Base URL for the [`stellar-stream-hive-api`](https://github.com/Stellar-Hive/stellar-stream-hive-api) indexer. Used for platform stats and stream lists. Absent → graceful empty/loading state. |
+| `NEXT_PUBLIC_MOCK_DATA` | No | *(empty)* | Set to `1` in development to serve fixture streams instead of real API calls. Disabled automatically in `NODE_ENV=production`. The UI labels itself as showing mock data. |
+| `NEXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | Public base URL. Used as `metadataBase` for Open Graph tags (`app/layout.tsx`) and for the generated sitemap (`app/sitemap.ts`). Set to your real URL in production. |
+| `NEXT_PUBLIC_DOCS_URL` | No | *(empty)* | Base URL of the docs site. Absent → Docs link hidden from navbar and footer. |
+
+> **Note:** all `NEXT_PUBLIC_*` variables are inlined into the JavaScript bundle at **build time**. Changing them after a build has no effect — rebuild the app (or the Docker image) with the new values.
+
+## Deployment
+
+This section covers deploying the app to any self-hosted environment. The same principles apply to platforms such as Railway, Fly.io, or a VPS; the key constraint is that `NEXT_PUBLIC_*` variables must be supplied at build time, not at runtime.
+
+### Build-time environment variables
+
+All `NEXT_PUBLIC_*` variables are embedded into the JavaScript bundle when `npm run build` runs. They **cannot** be changed without rebuilding.
+
+For testnet, the values in `.env.example` work out of the box:
+
+```bash
+cp .env.example .env.local
+npm run build
+npm run start
+```
+
+For other networks (or a custom contract deployment), set the variables before running the build:
+
+```bash
+# Mainnet example
+NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC \
+NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015" \
+NEXT_PUBLIC_SOROBAN_RPC_URL=https://soroban.stellar.org \
+NEXT_PUBLIC_STREAM_CONTRACT_ID=<your-stream-contract-id> \
+NEXT_PUBLIC_VAULT_CONTRACT_ID=<your-vault-contract-id> \
+NEXT_PUBLIC_REGISTRY_CONTRACT_ID=<your-registry-contract-id> \
+NEXT_PUBLIC_API_BASE_URL=https://api.your-domain.com \
+NEXT_PUBLIC_SITE_URL=https://app.your-domain.com \
+npm run build
+npm run start
+```
+
+### Docker
+
+A multi-stage `Dockerfile` is included. It uses Node 20 (from `.nvmrc`) and Next.js's
+`output: "standalone"` mode to produce a minimal image.
+
+```bash
+# Build the image, supplying NEXT_PUBLIC_* values as build arguments
+docker build \
+  --build-arg NEXT_PUBLIC_STELLAR_NETWORK=TESTNET \
+  --build-arg NEXT_PUBLIC_STREAM_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_VAULT_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_REGISTRY_CONTRACT_ID=<your-id> \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=<your-api-url> \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://app.your-domain.com \
+  -t stellar-stream-hive-frontend .
+
+# Run the container
+docker run -p 3000:3000 stellar-stream-hive-frontend
+```
+
+The container listens on port 3000. `NEXT_PUBLIC_*` variables are baked into the bundle;
+the only runtime variable accepted by the Node server is `PORT` (default `3000`).
+
+### Testnet versus other networks
+
+| Setting | Testnet | Mainnet (`PUBLIC`) |
+| --- | --- | --- |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | `TESTNET` | `PUBLIC` |
+| `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` | `Public Global Stellar Network ; September 2015` |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` | `https://soroban.stellar.org` |
+| Contract IDs | From `.env.example` (deployed 2026-10-12) | From your own deployment via `scripts/deploy.sh` in the contracts repo |
+
+The app displays a network notice badge when `NEXT_PUBLIC_STELLAR_NETWORK` is not `PUBLIC`,
+so users cannot mistake testnet streams for real money.
 
 ## Project structure
+
+For how these layers depend on each other and where each data source comes from, see
+[`docs/architecture.md`](./docs/architecture.md).
 
 ```
 app/
@@ -113,14 +194,22 @@ hooks/
   useWallet.ts                Freighter connection state
   useLiveBalance.ts           The per-second ticking balance hook
   useStream.ts / useStreams.ts  Data loading for one stream / lists of streams
+  useLedgerSnapshot.ts        Latest-ledger snapshot used by the live balance
 lib/
   contracts.ts                Soroban contract call helpers (create/withdraw/cancel)
+  contractErrors.ts           Maps contract error codes to friendly messages
+  constants.ts                Shared constants (e.g. the balance tick interval)
   freighter.ts                Freighter API wrapper with normalized error handling
   stellar.ts                  Network config, RPC client, address validation
   streaming.ts                Client-side streamed-amount math (mirrors the contract)
   format.ts                   BigInt <-> decimal string formatting, address shortening
   api.ts                      Indexer API client
-types/index.ts                 Shared domain types
+  validation.ts               Input validation for addresses, amounts and form fields
+  tokens.ts                   Supported token list and token lookup helpers
+  tokenMetadata.ts            Token metadata (symbol, decimals) loading and caching
+  streamMapping.ts            Mapping indexer API and contract responses into `Stream`
+  streamList.ts               Status filters and CSV export for stream lists
+types/index.ts                Shared domain types
 ```
 
 ## Verifying the build
@@ -170,7 +259,7 @@ MIT
 ```bash
 npm run lint        # ESLint (next/core-web-vitals)
 npm run typecheck   # tsc --noEmit, strict mode
-npm test            # Vitest unit tests (watch mode: npm run test:watch)
+npm test            # Vitest unit tests once (with coverage: npm run test:coverage)
 npm run build       # production build
 ```
 
@@ -179,12 +268,12 @@ All four run in CI on every push and pull request (`.github/workflows/ci.yml`).
 The unit tests target the logic where a mistake would cost someone money or show
 them a wrong balance, and run without a browser, wallet or network:
 
-| Module | What is covered |
-| --- | --- |
-| `lib/streaming.ts` | The accrual formula against the contract's own test vectors: flooring, multiply-before-divide, cliff, monotonicity, BigInt precision beyond `Number.MAX_SAFE_INTEGER`, ledger/time estimation |
-| `lib/format.ts` | Decimal parsing and formatting round-trips, truncation instead of rounding, address and explorer URL helpers |
-| `lib/streamMapping.ts` | Mapping the indexer API's and the contract's responses into the app's `Stream` type |
-| `lib/streamList.ts` | Status filters and CSV export (including spreadsheet-formula neutralisation) |
+| Module                 | What is covered                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/streaming.ts`     | The accrual formula against the contract's own test vectors: flooring, multiply-before-divide, cliff, monotonicity, BigInt precision beyond `Number.MAX_SAFE_INTEGER`, ledger/time estimation |
+| `lib/format.ts`        | Decimal parsing and formatting round-trips, truncation instead of rounding, address and explorer URL helpers                                                                                  |
+| `lib/streamMapping.ts` | Mapping the indexer API's and the contract's responses into the app's `Stream` type                                                                                                           |
+| `lib/streamList.ts`    | Status filters and CSV export (including spreadsheet-formula neutralisation)                                                                                                                  |
 
 ## Backend compatibility
 
@@ -228,9 +317,9 @@ shown, with amounts as human-readable decimals.
 
 ## Troubleshooting
 
-| Problem | Cause | Fix |
-| --- | --- | --- |
-| "Freighter not detected" | Freighter extension not installed or page loaded before it initialised | Install [Freighter](https://www.freighter.app/), reload the page, and ensure it is enabled for this site |
-| Wrong network badge (e.g. Mainnet instead of Testnet) | `NEXT_PUBLIC_STELLAR_NETWORK` does not match the network selected in Freighter | Set the variable in `.env.local` to `testnet` or `mainnet` and restart the dev server |
-| CORS errors calling the indexer API | `NEXT_PUBLIC_API_BASE_URL` points to a server that does not allow the app's origin | Verify the URL in `.env.local` and ensure the API's CORS config includes your origin |
-| "Contract not configured" | `NEXT_PUBLIC_STREAM_CONTRACT_ID` is missing or invalid | Add the deployed contract ID to `.env.local` (see `.env.example`) |
+| Problem                                               | Cause                                                                              | Fix                                                                                                      |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| "Freighter not detected"                              | Freighter extension not installed or page loaded before it initialised             | Install [Freighter](https://www.freighter.app/), reload the page, and ensure it is enabled for this site |
+| Wrong network badge (e.g. Mainnet instead of Testnet) | `NEXT_PUBLIC_STELLAR_NETWORK` does not match the network selected in Freighter     | Set the variable in `.env.local` to `testnet` or `mainnet` and restart the dev server                    |
+| CORS errors calling the indexer API                   | `NEXT_PUBLIC_API_BASE_URL` points to a server that does not allow the app's origin | Verify the URL in `.env.local` and ensure the API's CORS config includes your origin                     |
+| "Contract not configured"                             | `NEXT_PUBLIC_STREAM_CONTRACT_ID` is missing or invalid                             | Add the deployed contract ID to `.env.local` (see `.env.example`)                                        |

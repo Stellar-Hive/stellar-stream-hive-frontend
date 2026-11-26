@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
+import { useId } from "react";
 import { useLiveBalance } from "@/hooks/useLiveBalance";
 import { formatBaseUnits } from "@/lib/format";
 import type { LedgerSnapshot } from "@/lib/stellar";
@@ -40,6 +41,7 @@ export function LiveBalance({
   size = "lg",
   label = "Withdrawable now",
 }: LiveBalanceProps) {
+  const labelId = useId();
   const state = useLiveBalance({
     totalAmount: BigInt(totalAmount),
     withdrawnAmount: BigInt(withdrawnAmount),
@@ -76,8 +78,8 @@ export function LiveBalance({
   });
 
   return (
-    <div>
-      <div className="mb-1.5 flex items-center gap-2 text-sm text-muted">
+    <div role="group" aria-labelledby={labelId}>
+      <div id={labelId} className="mb-1.5 flex items-center gap-2 text-sm text-muted">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:animate-none" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
@@ -90,9 +92,8 @@ export function LiveBalance({
         )}
       </div>
       <div
-        className={`mono-tabular font-bold leading-tight ${
-          size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl"
-        }`}
+        aria-live="off"
+        className={`mono-tabular font-bold leading-tight ${size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl"}`}
       >
         {formatted} <span className="text-muted">{tokenSymbol}</span>
       </div>

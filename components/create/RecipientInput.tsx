@@ -17,6 +17,11 @@ export function RecipientInput({ value, onChange, senderAddress = null }: Recipi
   const selfCheck = checkRecipientNotSender(value, senderAddress);
   const isValid = isValidAddress && selfCheck.ok;
 
+  const showAddressError = touched && !isValidAddress;
+  const showSelfError = touched && isValidAddress && !selfCheck.ok;
+  const hasError = showAddressError || showSelfError;
+  const messageId = "recipient-error";
+
   return (
     <div>
       <label className="label" htmlFor="recipient">
@@ -30,14 +35,20 @@ export function RecipientInput({ value, onChange, senderAddress = null }: Recipi
         placeholder="G..."
         spellCheck={false}
         autoComplete="off"
+        aria-invalid={hasError}
+        aria-describedby={hasError ? messageId : undefined}
         className={`input-field font-mono text-sm ${touched && !isValid ? "border-danger focus:border-danger focus:ring-danger" : ""}`}
       />
-      {touched && !isValidAddress && (
-        <p className="mt-1.5 text-xs text-danger">
+      {showAddressError && (
+        <p id={messageId} className="mt-1.5 text-xs text-danger">
           Enter a valid Stellar account address — 56 characters, starting with &quot;G&quot;.
         </p>
       )}
-      {touched && isValidAddress && !selfCheck.ok && <p className="mt-1.5 text-xs text-danger">{selfCheck.reason}</p>}
+      {showSelfError && (
+        <p id={messageId} className="mt-1.5 text-xs text-danger">
+          {selfCheck.reason}
+        </p>
+      )}
       {touched && isValid && <p className="mt-1.5 text-xs text-primary">Valid Stellar address.</p>}
     </div>
   );

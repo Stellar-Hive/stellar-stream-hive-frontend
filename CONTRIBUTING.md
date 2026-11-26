@@ -4,10 +4,15 @@ Thanks for your interest in contributing! This repo is the Next.js frontend for 
 Hive. Contributions of all sizes are welcome — bug fixes, new components, accessibility
 improvements, documentation, and design polish.
 
+By participating in this project you agree to abide by our
+[Code of Conduct](./CODE_OF_CONDUCT.md).
+
 ## Repository layout
 
 See the "Project structure" section of [`README.md`](./README.md) for a map of `app/`,
-`components/`, `hooks/`, and `lib/`.
+`components/`, `hooks/`, and `lib/`. [`docs/architecture.md`](./docs/architecture.md) explains
+which layer may import which, and where each kind of data comes from. Read it before adding a
+new module or a new network call.
 
 Related repositories, if your change touches contract behavior or indexed data instead of the
 frontend itself:
@@ -25,6 +30,21 @@ cp .env.example .env.local
 npm run dev
 ```
 
+### Pre-commit checks
+
+`npm install` sets up a Git pre-commit hook (via [husky](https://typicode.github.io/husky/)).
+On each commit it runs [lint-staged](https://github.com/lint-staged/lint-staged), which only
+touches the files you staged:
+
+- ESLint with `--fix` on staged `.ts`, `.tsx`, `.js`, `.jsx` and `.mjs` files
+- Prettier on staged code, JSON, Markdown and CSS files
+
+Run the same format check CI runs with `npm run format:check`, or fix formatting with
+`npm run format`.
+
+To commit without the hook (for example, while rebasing), set `HUSKY=0` for that command:
+`HUSKY=0 git commit -m "..."`.
+
 You'll need the [Freighter](https://www.freighter.app/) browser extension to exercise
 wallet-connected flows locally, set to **Testnet**.
 
@@ -32,6 +52,36 @@ Contract-calling features (create/withdraw/cancel a stream) require
 `NEXT_PUBLIC_STREAM_CONTRACT_ID` (and friends) to point at a real deployed contract. If you're
 only working on UI/UX that doesn't touch live contract state, you can leave these unset — the
 app will show a clear "not yet configured" state rather than erroring.
+
+## Testnet funds and Freighter setup
+
+Wallet-connected features only work on the Stellar **testnet**, and the testnet account you use
+must be funded before it can sign anything. Follow these steps once per browser profile:
+
+1. **Install Freighter.** Add the [Freighter](https://www.freighter.app/) extension to a
+   Chromium or Firefox browser, then create a wallet or import an existing one. Use a test wallet
+   only, never one that holds real funds.
+2. **Switch Freighter to Testnet.** Open Freighter, open the network selector, and choose
+   **Testnet**. The app reads `NEXT_PUBLIC_STELLAR_NETWORK` from `.env.local` (`TESTNET` in
+   `.env.example`), so Freighter and the app must agree. The
+   [wrong-network message](./README.md#troubleshooting) appears when they do not.
+3. **Fund the account with Friendbot.** Copy your public key (the `G…` address) from Freighter,
+   then open this URL in your browser, replacing `<PUBLIC_KEY>` with that address:
+
+   ```
+   https://friendbot.stellar.org/?addr=<PUBLIC_KEY>
+   ```
+
+   Friendbot gives the account test XLM. It works only on testnet. Repeat for each account you
+   need, such as a sender and a recipient.
+4. **Start the app and connect.** Run `npm run dev`, open
+   [http://localhost:3000](http://localhost:3000), and click the wallet connect button. If
+   Freighter asks whether this site may connect, allow it. The network badge should then read
+   Testnet.
+
+If Freighter is not detected at all, reload the page after installing it. The
+[troubleshooting table in the README](./README.md#troubleshooting) lists the other common
+errors.
 
 ## Running against a local API and testnet contracts
 
@@ -45,9 +95,9 @@ The app shows real streams only when it can reach an indexer API. To try the ful
 2. **Point the frontend at it.** In `.env.local`, set
    `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`, then restart `npm run dev`.
 3. **Fund two testnet accounts.** In Freighter, switch to **Testnet** and create or import a
-   sender and a recipient account. Fund each one with Friendbot at
-   `https://friendbot.stellar.org/?addr=<PUBLIC_KEY>`. Friendbot only works on testnet, so never
-   use a mainnet key here.
+   sender and a recipient account. Fund each one with Friendbot as described in
+   [Testnet funds and Freighter setup](#testnet-funds-and-freighter-setup). Never use a mainnet
+   key here.
 4. **Create a test stream.** Connect the sender account, enter the recipient's address, keep
    XLM as the token, choose a small amount, and submit. Freighter asks you to sign. Once the
    transaction confirms, the stream shows up in the sender's list after the indexer's next poll.
@@ -103,14 +153,50 @@ logic under `lib/`, add or update a unit test next to it. If you touched `lib/st
 `lib/format.ts`, please also double check the BigInt math with a couple of manual examples —
 these functions are load-bearing for correctness across the whole app.
 
-## Commit style
+## Branch names
 
-Use clear, present-tense commit messages describing *why* a change was made where it's not
-obvious from the diff (e.g. `fix: clamp withdrawable to zero before a stream's cliff` rather
-than `fix bug`).
+Branch from `main` and name the branch `<type>/<short-description>`, where `<type>` is one of
+the commit prefixes below and the description is a few lowercase words separated by hyphens.
+Include the issue number when the branch fixes one:
+
+- `fix/16-19-explorer-withdrawable-horizon-lint`
+- `test/issues-28-29-freighter-stellar-tests`
+- `docs/280-281-282-283-docs-and-architecture`
+
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) prefixes. These are the ones
+already used in this repository's history:
+
+| Prefix | Use it for |
+| --- | --- |
+| `fix:` | A bug fix in app behaviour |
+| `feat:` | A new user-visible feature or capability |
+| `test:` | Adding or changing tests without changing app behaviour |
+| `perf:` | A change made for speed or fewer requests, with no change in results |
+| `chore:` | Tooling, lint configuration, dependencies and cleanup |
+| `docs:` | Documentation only, such as this file, the README and `docs/` |
+
+Write the subject in the present tense and keep it short, for example
+`fix: clamp withdrawable to zero before a stream's cliff` rather than `fix bug`. Describe *why*
+the change was made in the body when that is not obvious from the diff.
+
+## Referencing issues
+
+- In a commit message, add `Closes #<number>` on its own line when the commit completes an issue.
+  Use `Refs #<number>` when the commit only contributes to one.
+- In the pull request description, list each issue with `Closes #<number>` so GitHub links the
+  PR to the issue and closes it on merge.
+- If a change has no matching issue, leave the reference out rather than inventing one.
 
 ## Reporting issues
 
 Please include: what you expected, what happened instead, your browser/Freighter version, and
 which network (testnet/futurenet) you were connected to. Screenshots or a short recording help a
 lot for anything involving `LiveBalance` or the create-stream flow.
+
+## Declared dependencies
+
+CI (the `Declared dependencies` job) runs `npm ci` from a clean checkout and then `depcheck`, and fails if any file imports a package that is not listed in `package.json`. Unused dependencies only produce a warning. If you add an import, add the package with `npm install <name>` (or `npm install -D <name>` for tooling and tests) and commit both `package.json` and `package-lock.json`.
+
+To allow a deliberate exception (for example a package that is provided by the platform), add its name to the `ignores` list in `.depcheckrc.json` and explain why in the PR.

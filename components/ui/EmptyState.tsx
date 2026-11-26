@@ -21,7 +21,15 @@ export function EmptyState({ title, description, icon, action }: EmptyStateProps
 
 function DefaultIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted">
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="text-muted"
+    >
       <circle cx="12" cy="12" r="9" />
       <path d="M9 10h.01M15 10h.01M9.5 15c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1" />
     </svg>

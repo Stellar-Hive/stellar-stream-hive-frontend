@@ -59,9 +59,7 @@ export function StreamFilterBar({
               aria-pressed={selected}
               onClick={() => onChange(filter.value)}
               className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                selected
-                  ? "border-primary/40 bg-primary/10 text-primary"
-                  : "border-border text-muted hover:text-white"
+                selected ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted hover:text-white"
               }`}
             >
               {filter.label} <span className="mono-tabular opacity-70">{counts[filter.value]}</span>

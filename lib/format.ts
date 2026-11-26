@@ -9,6 +9,16 @@
 
 export const STROOP_DECIMALS = 7;
 
+/**
+ * Formats a plain count/number with a fixed locale (never the runtime's
+ * ambient locale) so server-rendered and client-rendered HTML always match —
+ * `toLocaleString()` with no locale can pick different locales on the server
+ * and in the browser, causing a hydration mismatch.
+ */
+export function formatNumber(value: number | bigint, options?: Intl.NumberFormatOptions): string {
+  return value.toLocaleString("en-US", options);
+}
+
 /** 10^decimals, as a BigInt, for fixed-point conversions. */
 export function decimalsFactor(decimals: number = STROOP_DECIMALS): bigint {
   return 10n ** BigInt(decimals);
@@ -20,11 +30,11 @@ export function decimalsFactor(decimals: number = STROOP_DECIMALS): bigint {
  */
 export function parseAmountToBaseUnits(input: string, decimals: number = STROOP_DECIMALS): bigint {
   const trimmed = input.trim();
-  if (trimmed === "" || Number.isNaN(Number(trimmed))) {
-    throw new Error("Invalid amount");
-  }
   const negative = trimmed.startsWith("-");
   if (negative) throw new Error("Amount must not be negative");
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(trimmed)) {
+    throw new Error("Invalid amount");
+  }
 
   const [wholeRaw, fracRaw = ""] = trimmed.split(".");
   const whole = wholeRaw === "" ? "0" : wholeRaw;
@@ -92,19 +102,35 @@ export function shortenAddress(address: string, lead: number = 4, trail: number 
   return `${address.slice(0, lead)}…${address.slice(-trail)}`;
 }
 
-/** Builds a Stellar Expert explorer URL for an account or contract address. */
-export function stellarExpertAccountUrl(address: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for an account or contract address.
+ * Returns `null` when `network` is `null` (e.g. Futurenet, which Stellar
+ * Expert does not index) so callers can hide the link instead of pointing
+ * at the wrong network.
+ */
+export function stellarExpertAccountUrl(
+  address: string,
+  network: "testnet" | "public" | null = "testnet"
+): string | null {
+  if (network === null) return null;
   const kind = address.startsWith("C") ? "contract" : "account";
   return `https://stellar.expert/explorer/${network}/${kind}/${address}`;
 }
 
-/** Builds a Stellar Expert explorer URL for a transaction hash. */
-export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" = "testnet"): string {
+/**
+ * Builds a Stellar Expert explorer URL for a transaction hash. Returns
+ * `null` when `network` is `null` (see {@link stellarExpertAccountUrl}).
+ */
+export function stellarExpertTxUrl(hash: string, network: "testnet" | "public" | null = "testnet"): string | null {
+  if (network === null) return null;
   return `https://stellar.expert/explorer/${network}/tx/${hash}`;
 }
 
 /** Formats a plain number of base units per second/hour/day into a human rate string. */
-export function formatRate(amountPerSecond: number, symbol: string): { perSecond: string; perHour: string; perDay: string } {
+export function formatRate(
+  amountPerSecond: number,
+  symbol: string
+): { perSecond: string; perHour: string; perDay: string } {
   const fmt = (n: number) => {
     if (!Number.isFinite(n)) return "0";
     if (n === 0) return "0";
@@ -115,6 +141,41 @@ export function formatRate(amountPerSecond: number, symbol: string): { perSecond
     perSecond: `${fmt(amountPerSecond)} ${symbol}`,
     perHour: `${fmt(amountPerSecond * 3600)} ${symbol}`,
     perDay: `${fmt(amountPerSecond * 86400)} ${symbol}`,
+  };
+}
+
+/**
+ * Computes per-second/hour/day streaming rates from a base-unit (BigInt) total
+ * amount and a duration in seconds, entirely in BigInt arithmetic so large
+ * amounts never pass through a JS `number` (which loses precision above
+ * `Number.MAX_SAFE_INTEGER`). Each rate is floored to the token's base unit,
+ * never rounded up — a true rate smaller than one base unit per second will
+ * correctly display as "0" rather than a fabricated fractional value.
+ */
+export function formatRateFromBaseUnits(
+  totalAmount: bigint,
+  totalSeconds: number,
+  symbol: string,
+  decimals: number = STROOP_DECIMALS
+): { perSecond: string; perHour: string; perDay: string } {
+  const zero = {
+    perSecond: formatTokenAmount(0n, symbol, decimals, decimals),
+    perHour: formatTokenAmount(0n, symbol, decimals, decimals),
+    perDay: formatTokenAmount(0n, symbol, decimals, decimals),
+  };
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return zero;
+
+  const secondsBig = BigInt(Math.floor(totalSeconds));
+  if (secondsBig <= 0n) return zero;
+
+  const perSecond = totalAmount / secondsBig;
+  const perHour = (totalAmount * 3600n) / secondsBig;
+  const perDay = (totalAmount * 86400n) / secondsBig;
+
+  return {
+    perSecond: formatTokenAmount(perSecond, symbol, decimals, decimals),
+    perHour: formatTokenAmount(perHour, symbol, decimals, decimals),
+    perDay: formatTokenAmount(perDay, symbol, decimals, decimals),
   };
 }
 
@@ -135,4 +196,48 @@ export function formatUtcOffset(date: Date, timeZone?: string): string | null {
   } catch {
     return null;
   }
+}
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Describes how far away `targetMs` is from `nowMs` as a short countdown such
+ * as "3d 4h", "5h 12m", "4m" or "less than a minute". Whole units are floored,
+ * never rounded up. Returns `null` when the target is not in the future or
+ * either timestamp is invalid, so callers can hide the countdown instead of
+ * showing a fabricated value.
+ */
+export function formatTimeUntil(targetMs: number, nowMs: number): string | null {
+  if (!Number.isFinite(targetMs) || !Number.isFinite(nowMs)) return null;
+  const remaining = targetMs - nowMs;
+  if (remaining <= 0) return null;
+  if (remaining < MINUTE_MS) return "less than a minute";
+
+  const days = Math.floor(remaining / DAY_MS);
+  const hours = Math.floor((remaining % DAY_MS) / HOUR_MS);
+  const minutes = Math.floor((remaining % HOUR_MS) / MINUTE_MS);
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+/**
+ * Describes how long ago `thenMs` was relative to `nowMs` as a short label:
+ * "just now" under five seconds, then "30s ago", "5m ago", "2h ago", "3d ago".
+ * Times in the future are treated as "just now".
+ */
+export function formatTimeAgo(thenMs: number, nowMs: number): string {
+  if (!Number.isFinite(thenMs) || !Number.isFinite(nowMs)) return "just now";
+  const elapsed = Math.max(0, nowMs - thenMs);
+  const seconds = Math.floor(elapsed / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }

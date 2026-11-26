@@ -19,6 +19,9 @@ Mirrors [CONTRIBUTING.md](../CONTRIBUTING.md) — please confirm before requesti
 - [ ] Wallet and network errors (Freighter missing, wrong network, rejected signature, RPC timeout) render a helpful state, not an uncaught exception
 - [ ] No fabricated data: unavailable data shows a loading, empty, or error state
 - [ ] Transaction amounts are re-fetched on-chain immediately before submitting, not taken from the client-side estimate
+- [ ] UI changes include before/after screenshots (see the Screenshots section below)
+- [ ] UI changes were checked with the keyboard only and with a screen reader (focus order, labels, status messages)
+- [ ] Any BigInt arithmetic was reviewed for flooring and for no `number` conversion of amounts
 
 ## Screenshots (UI changes)
 

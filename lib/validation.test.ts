@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { I128_MAX, checkAmount, checkRecipientNotSender } from "./validation";
+import { I128_MAX, checkAmount, checkRecipientNotSender, isValidStreamId } from "./validation";
 import { parseAmountToBaseUnits } from "./format";
 
 const base = (input: string, decimals = 7) => {
@@ -24,11 +24,28 @@ describe("checkAmount", () => {
     expect(base("7", 0)).toBe(7n);
   });
 
+  it("handles 0-decimal tokens correctly", () => {
+    // whole numbers are accepted and return base units equal to the integer value
+    expect(checkAmount("5", 0)).toEqual({ ok: true, baseUnits: 5n });
+    // any fractional part, even '.0', is rejected with the no-decimal-places message
+    expect(checkAmount("5.0", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
+    expect(checkAmount("5.1", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
+  });
+
   it("rejects more fractional digits than the token supports instead of silently truncating", () => {
     const r = checkAmount("1.123456789", 7);
     expect(r).toEqual({ ok: false, reason: "This token supports at most 7 decimal places." });
     expect(checkAmount("1.1234567", 6).ok).toBe(false);
-    expect(checkAmount("1.5", 0)).toEqual({ ok: false, reason: "This token has no decimal places; enter a whole number." });
+    expect(checkAmount("1.5", 0)).toEqual({
+      ok: false,
+      reason: "This token has no decimal places; enter a whole number.",
+    });
   });
 
   it("rejects amounts that look positive but are zero in base units", () => {
@@ -59,6 +76,29 @@ describe("checkAmount", () => {
   });
 });
 
+describe("checkAmount — invalid decimals", () => {
+  it("returns an error result instead of throwing for non-integer decimals", () => {
+    expect(() => checkAmount("1", 1.5)).not.toThrow();
+    const r = checkAmount("1", 1.5);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("returns an error result instead of throwing for negative decimals", () => {
+    expect(() => checkAmount("1", -1)).not.toThrow();
+    const r = checkAmount("1", -1);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Invalid token decimals.");
+  });
+
+  it("rejects NaN and non-finite decimals", () => {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const r = checkAmount("1", bad);
+      expect(r.ok, String(bad)).toBe(false);
+    }
+  });
+});
+
 describe("checkRecipientNotSender", () => {
   it("blocks streaming to your own address", () => {
     expect(checkRecipientNotSender("GABC", "GABC")).toEqual({
@@ -70,5 +110,40 @@ describe("checkRecipientNotSender", () => {
     expect(checkRecipientNotSender("GOTHER", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("", "GABC")).toEqual({ ok: true });
     expect(checkRecipientNotSender("GABC", null)).toEqual({ ok: true });
+  });
+});
+
+describe("isValidStreamId", () => {
+  it("accepts non-negative decimal integers, including a leading zero and large u64 values", () => {
+    expect(isValidStreamId("0")).toBe(true);
+    expect(isValidStreamId("1")).toBe(true);
+    expect(isValidStreamId("42")).toBe(true);
+    expect(isValidStreamId("007")).toBe(true);
+    expect(isValidStreamId("18446744073709551615")).toBe(true); // u64::MAX
+  });
+
+  it("rejects anything that isn't a plain unsigned integer string", () => {
+    for (const bad of ["abc", "", " ", "1.5", "-1", "+1", "1e3", "0x10", "1,000", "1 2", " 1", "1 "]) {
+      expect(isValidStreamId(bad), JSON.stringify(bad)).toBe(false);
+    }
+  });
+});
+
+// ─── Issue #35: checkAmount — table-driven rejection tests ───────────────────
+
+describe("checkAmount — explicit rejection reasons for common invalid formats", () => {
+  const cases: [string, string][] = [
+    ["0x10", "Enter a valid, non-negative number."],
+    ["1e3", "Enter a valid, non-negative number."],
+    ["1,000", "Enter a valid, non-negative number."],
+    ["+5", "Enter a valid, non-negative number."],
+  ];
+
+  it.each(cases)("rejects %j with reason %j", (input, expectedReason) => {
+    const result = checkAmount(input, 7);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe(expectedReason);
+    }
   });
 });

@@ -3,12 +3,48 @@
 @tailwind utilities;
 
 @layer base {
-  html {
+  :root {
+    --color-background: #0b0e14;
+    --color-surface: #12161f;
+    --color-surface-hover: #171c28;
+    --color-border: #242b3a;
+    --color-primary: #6ee7b7;
+    --color-primary-dark: #34d399;
+    --color-primary-light: #a7f3d0;
+    --color-accent: #818cf8;
+    --color-accent-dark: #6366f1;
+    --color-muted: #8b93a7;
+    --color-danger: #f87171;
+    --color-warning: #fbbf24;
     color-scheme: dark;
   }
 
+  html:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    --color-background: #ffffff;
+    --color-surface: #f3f4f6;
+    --color-surface-hover: #e5e7eb;
+    --color-border: #d1d5db;
+    --color-primary: #10b981;
+    --color-primary-dark: #059669;
+    --color-primary-light: #d1fae5;
+    --color-accent: #6366f1;
+    --color-accent-dark: #4f46e5;
+    --color-muted: #6b7280;
+    --color-danger: #ef4444;
+    --color-warning: #f59e0b;
+    color-scheme: light;
+  }
+
   body {
-    @apply bg-background text-white antialiased;
+    @apply bg-background text-white antialiased transition-colors;
+  }
+
+  html[data-theme="light"] body {
+    @apply text-gray-900;
   }
 
   ::selection {
@@ -62,4 +98,73 @@
 ::-webkit-scrollbar-thumb {
   background-color: #242b3a;
   border-radius: 8px;
+}
+
+@media print {
+  /* Hide interactive elements */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Hide navbar and footer */
+  nav,
+  header,
+  .navbar {
+    display: none !important;
+  }
+
+  /* Dark text on white background for readability */
+  body {
+    @apply bg-white text-black;
+  }
+
+  a {
+    @apply text-blue-600 underline;
+  }
+
+  /* Keep full addresses visible without truncation */
+  .truncate {
+    @apply truncate-none;
+  }
+
+  /* Adjust card styling for print */
+  .card {
+    @apply border border-gray-300 bg-white text-black;
+    page-break-inside: avoid;
+  }
+
+  /* Remove background colors and use border instead */
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    @apply border border-gray-400 bg-white text-black;
+  }
+
+  /* Ensure all content is visible */
+  * {
+    @apply bg-white text-black;
+  }
+
+  /* Override surface colors for print */
+  .bg-surface,
+  .bg-background {
+    @apply bg-white;
+  }
+
+  /* Make sure text is always readable */
+  .text-muted {
+    @apply text-gray-600;
+  }
+
+  /* Optimize spacing for print */
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  main,
+  .mx-auto {
+    max-width: 100%;
+    padding: 0;
+  }
 }

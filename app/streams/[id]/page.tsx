@@ -1,32 +1,22 @@
 "use client";
 
-import Link from "next/link";
+import { use } from "react";
 import { format } from "date-fns";
+import Link from "next/link";
 import { useStream } from "@/hooks/useStream";
 import { useWallet } from "@/hooks/useWallet";
-import { LiveBalance } from "@/components/stream/LiveBalance";
-import { StreamProgress } from "@/components/stream/StreamProgress";
-import { StreamTimeline } from "@/components/stream/StreamTimeline";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
-import { WithdrawButton } from "@/components/stream/WithdrawButton";
-import { CancelButton } from "@/components/stream/CancelButton";
+import { StartsInCountdown } from "@/components/stream/StartsInCountdown";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Spinner } from "@/components/ui/Spinner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  formatRate,
-  formatTokenAmount,
-  shortenAddress,
-  stellarExpertAccountUrl,
-  stellarExpertTxUrl,
-} from "@/lib/format";
-import { getStreamContractId, isStreamContractConfigured } from "@/lib/contracts";
-import { AVERAGE_LEDGER_SECONDS } from "@/lib/streaming";
-import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { csvFilename, streamToCsv, streamToJson } from "@/lib/streamList";
+import type { Stream } from "@/types";
 
-export default function StreamDetailPage({ params }: { params: { id: string } }) {
-  const { stream, isLoading, error, notConfigured, refetch } = useStream(params.id);
+export default function StreamDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { stream, isLoading, error, notConfigured, refetch } = useStream(id);
   const wallet = useWallet();
 
   if (isLoading) {
@@ -57,144 +47,55 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   }
 
   const isActive = stream.status === "active" || stream.status === "cliff";
-  const totalTokens = Number(stream.totalAmount) / 10 ** stream.token.decimals;
-  const totalSeconds = (stream.endLedger - stream.startLedger) * AVERAGE_LEDGER_SECONDS;
-  const ratePerSecond = totalSeconds > 0 ? totalTokens / totalSeconds : 0;
-  const rate = formatRate(ratePerSecond, stream.token.symbol);
-  const contractConfigured = isStreamContractConfigured();
-  const contractId = contractConfigured ? getStreamContractId() : null;
+  // The connected wallet determines where "Back" should return the user to:
+  // the Sending list if they're the sender, Receiving if they're the
+  // recipient, otherwise fall back to the home page.
+  const isSender = wallet.publicKey != null && wallet.publicKey === stream.sender;
+  const isRecipient = wallet.publicKey != null && wallet.publicKey === stream.recipient;
+  const backHref = isSender ? "/sending" : isRecipient ? "/receiving" : "/";
+  const backLabel = isSender ? "Back to sending" : isRecipient ? "Back to receiving" : "Back home";
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/" className="text-sm text-muted hover:text-white">
-          ← Back home
+        <Link href={backHref} className="text-sm text-muted hover:text-white">
+          ← {backLabel}
         </Link>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/streams/new?${buildDuplicateQueryString({
+              recipient: stream.recipient,
+              tokenContractId: stream.token.contractId,
+              amount: formatBaseUnits(BigInt(stream.totalAmount), stream.token.decimals, {
+                maxDecimals: stream.token.decimals,
+                minDecimals: 0,
+                grouped: false,
+              }),
+              cancellable: stream.cancellable,
+            })}`}
+            className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-hover print:hidden"
+          >
+            Duplicate
+          </Link>
           <CopyButton
             value={() => (typeof window !== "undefined" ? window.location.href : "")}
             label="Copy link"
           />
+          <ExportButtons stream={stream} />
           <StreamStatusBadge status={stream.status} />
         </div>
       </div>
 
-      <div className="card mb-6">
-        <div className="mb-1 flex items-center gap-1 text-xs text-muted">
-          <span>Stream #{stream.id}</span>
-          <CopyButton value={stream.id} label="Copy ID" />
-        </div>
-        <LiveBalance
-          totalAmount={stream.totalAmount}
-          withdrawnAmount={stream.withdrawnAmount}
-          startLedger={stream.startLedger}
-          endLedger={stream.endLedger}
-          cliffLedger={stream.cliffLedger}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          enabled={isActive}
-        />
-
-        <div className="my-6">
-          <StreamTimeline
-            startLedger={stream.startLedger}
-            endLedger={stream.endLedger}
-            cliffLedger={stream.cliffLedger}
-            startTime={stream.startTime}
-            endTime={stream.endTime}
-            cliffTime={stream.cliffTime}
-            enabled={isActive}
-          />
-        </div>
-
-        <StreamProgress
-          totalAmount={stream.totalAmount}
-          withdrawnAmount={stream.withdrawnAmount}
-          startLedger={stream.startLedger}
-          endLedger={stream.endLedger}
-          cliffLedger={stream.cliffLedger}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          enabled={isActive}
-        />
-      </div>
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        <div className="card">
-          <h3 className="mb-3 text-sm font-semibold text-muted">Parties</h3>
-          <AddressRow label="Sender" address={stream.sender} />
-          <AddressRow label="Recipient" address={stream.recipient} />
-        </div>
-        <div className="card">
-          <h3 className="mb-3 text-sm font-semibold text-muted">Stream details</h3>
-          <DetailRow label="Token" value={stream.token.symbol} />
-          <DetailRow
-            label="Total amount"
-            value={formatTokenAmount(BigInt(stream.totalAmount), stream.token.symbol, stream.token.decimals, 4)}
-          />
-          <DetailRow
-            label="Withdrawn"
-            value={formatTokenAmount(
-              BigInt(stream.withdrawnAmount),
-              stream.token.symbol,
-              stream.token.decimals,
-              4,
-            )}
-          />
-          <DetailRow label="Rate" value={`~${rate.perDay} / day`} />
-          <DetailRow label="Start" value={format(stream.startTime, "PPpp")} />
-          <DetailRow label="End" value={format(stream.endTime, "PPpp")} />
-          {stream.cliffTime && <DetailRow label="Cliff" value={format(stream.cliffTime, "PPpp")} />}
-          <DetailRow label="Cancellable" value={stream.cancellable ? "Yes" : "No"} />
-          {contractId && (
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <span className="text-muted">Stream contract</span>
-              <a
-                href={stellarExpertAccountUrl(contractId, STELLAR_EXPERT_NETWORK)}
-                target="_blank"
-                rel="noreferrer"
-                className="text-accent underline"
-              >
-                View on Stellar Expert
-              </a>
-            </div>
-          )}
-          {stream.createTxHash && (
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <span className="text-muted">Create tx</span>
-              <a
-                href={stellarExpertTxUrl(stream.createTxHash, STELLAR_EXPERT_NETWORK)}
-                target="_blank"
-                rel="noreferrer"
-                className="text-accent underline"
-              >
-                View on Stellar Expert
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <WithdrawButton
-          streamId={stream.id}
-          recipientAddress={stream.recipient}
-          connectedAddress={wallet.publicKey}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          onWithdrawn={refetch}
-        />
-        <CancelButton
-          streamId={stream.id}
-          senderAddress={stream.sender}
-          connectedAddress={wallet.publicKey}
-          cancellable={stream.cancellable && isActive}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          onCancelled={refetch}
-        />
-      </div>
-
+      {stream.status === "scheduled" && (
+        <StartsInCountdown startTime={stream.startTime} className="mb-2 block text-sm text-muted" />
+      )}
+      <StreamDetails stream={stream} isActive={isActive} />
+      <StreamActions
+        stream={stream}
+        connectedAddress={wallet.publicKey}
+        onWithdrawn={refetch}
+        onCancelled={refetch}
+      />
       {!wallet.isConnected && (
         <p className="mt-4 text-sm text-muted">Connect your wallet to withdraw or manage this stream.</p>
       )}
@@ -202,30 +103,35 @@ export default function StreamDetailPage({ params }: { params: { id: string } })
   );
 }
 
-function AddressRow({ label, address }: { label: string; address: string }) {
-  return (
-    <div className="mb-2 flex items-center justify-between text-sm last:mb-0">
-      <span className="text-muted">{label}</span>
-      <div className="flex items-center gap-1">
-        <a
-          href={stellarExpertAccountUrl(address, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="font-mono text-accent hover:underline"
-        >
-          {shortenAddress(address)}
-        </a>
-        <CopyButton value={address} />
-      </div>
-    </div>
-  );
-}
+function ExportButtons({ stream }: { stream: Stream }) {
+  const downloadFile = (content: string, filename: string, type: string) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
-function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="mb-2 flex items-center justify-between text-sm last:mb-0">
-      <span className="text-muted">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex gap-2">
+      <button
+        onClick={() => downloadFile(streamToCsv(stream), csvFilename(`stream-${stream.id}`), "text/csv")}
+        className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-hover print:hidden"
+        title="Download as CSV"
+      >
+        CSV
+      </button>
+      <button
+        onClick={() => downloadFile(streamToJson(stream), `stream-${stream.id}.json`, "application/json")}
+        className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-surface-hover print:hidden"
+        title="Download as JSON"
+      >
+        JSON
+      </button>
     </div>
   );
 }

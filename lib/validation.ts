@@ -21,6 +21,10 @@ export type AmountCheck = { ok: true; baseUnits: bigint } | { ok: false; reason:
  * 7-decimal token looks positive but deposits nothing.
  */
 export function checkAmount(input: string, decimals: number): AmountCheck {
+  if (!Number.isInteger(decimals) || decimals < 0) {
+    return { ok: false, reason: "This token's decimal places are invalid." };
+  }
+
   const text = input.trim();
   if (text === "") return { ok: false, reason: "Enter an amount." };
   if (!/^(\d+\.?\d*|\.\d+)$/.test(text)) return { ok: false, reason: "Enter a valid, non-negative number." };
@@ -36,7 +40,8 @@ export function checkAmount(input: string, decimals: number): AmountCheck {
     };
   }
 
-  const baseUnits = BigInt(whole === "" ? "0" : whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
+  const baseUnits =
+    BigInt(whole === "" ? "0" : whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0");
   if (baseUnits === 0n) return { ok: false, reason: "Amount must be greater than zero." };
   if (baseUnits > I128_MAX) return { ok: false, reason: "Amount is too large." };
   return { ok: true, baseUnits };
@@ -50,4 +55,15 @@ export function checkRecipientNotSender(recipient: string, sender: string | null
     return { ok: false, reason: "The recipient can't be your own address." };
   }
   return { ok: true };
+}
+
+/**
+ * Stream ids are Soroban `u64` values, so the only valid route param is a
+ * non-negative, unsigned decimal integer with no leading `+`/`-`, decimal
+ * point, or extraneous characters. Rejecting anything else up front avoids
+ * calling the API/contract with a bad id (which otherwise surfaces as a
+ * confusing fetch error or a `BigInt` `SyntaxError`).
+ */
+export function isValidStreamId(id: string): boolean {
+  return /^\d+$/.test(id);
 }

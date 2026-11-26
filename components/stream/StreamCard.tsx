@@ -3,9 +3,12 @@ import { format, formatDistanceToNow } from "date-fns";
 import type { Stream } from "@/types";
 import { formatTokenAmount, shortenAddress } from "@/lib/format";
 import { computeProgress } from "@/lib/streaming";
+import { Card } from "@/components/ui/Card";
 import { StreamStatusBadge } from "@/components/stream/StreamStatusBadge";
 import { LiveBalance } from "@/components/stream/LiveBalance";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { useLiveBalance } from "@/hooks/useLiveBalance";
+import { StartsInCountdown } from "@/components/stream/StartsInCountdown";
 
 export interface StreamCardProps {
   stream: Stream;
@@ -21,6 +24,15 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
   const isLive = stream.status === "active" || stream.status === "cliff";
   const progress = computeProgress(stream.startLedger, stream.endLedger);
 
+  const liveBalance = useLiveBalance({
+    totalAmount: stream.totalAmount,
+    withdrawnAmount: stream.withdrawnAmount,
+    startLedger: stream.startLedger,
+    endLedger: stream.endLedger,
+    cliffLedger: stream.cliffLedger,
+    enabled: isLive,
+  });
+
   const endDate = stream.endTime ? new Date(stream.endTime) : null;
   const hasValidEndDate = endDate !== null && !Number.isNaN(endDate.getTime());
   const endLabel = hasValidEndDate
@@ -30,7 +42,7 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
     : null;
 
   return (
-    <div className="card flex flex-col gap-4">
+    <Card className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted">{counterpartLabel}</p>
@@ -50,19 +62,32 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
         </p>
       ) : null}
 
+      {stream.status === "scheduled" ? (
+        <StartsInCountdown startTime={stream.startTime} className="text-xs text-muted" />
+      ) : null}
+
       {role === "recipient" ? (
-        <LiveBalance
-          totalAmount={stream.totalAmount}
-          withdrawnAmount={stream.withdrawnAmount}
-          startLedger={stream.startLedger}
-          endLedger={stream.endLedger}
-          cliffLedger={stream.cliffLedger}
-          tokenSymbol={stream.token.symbol}
-          tokenDecimals={stream.token.decimals}
-          enabled={isLive}
-          size="sm"
-          label="Withdrawable"
-        />
+        liveBalance.isLoading ? (
+          <div>
+            <p className="text-xs text-muted">Withdrawable</p>
+            <p className="mono-tabular text-xl font-semibold text-muted" aria-busy="true">
+              Loading…
+            </p>
+          </div>
+        ) : (
+          <LiveBalance
+            totalAmount={stream.totalAmount}
+            withdrawnAmount={stream.withdrawnAmount}
+            startLedger={stream.startLedger}
+            endLedger={stream.endLedger}
+            cliffLedger={stream.cliffLedger}
+            tokenSymbol={stream.token.symbol}
+            tokenDecimals={stream.token.decimals}
+            enabled={isLive}
+            size="sm"
+            label="Withdrawable"
+          />
+        )
       ) : (
         <div>
           <p className="text-xs text-muted">Total commitment</p>
@@ -99,6 +124,6 @@ export function StreamCard({ stream, role, actions }: StreamCardProps) {
         </Link>
         {actions}
       </div>
-    </div>
+    </Card>
   );
 }

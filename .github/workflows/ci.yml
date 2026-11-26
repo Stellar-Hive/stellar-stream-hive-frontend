@@ -7,25 +7,99 @@ on:
     branches: [main]
 
 jobs:
+  # Issue #259: run lint, typecheck and tests on the pinned Node version and
+  # the current LTS to catch regressions introduced by engine differences.
   check:
-    name: Lint, typecheck, test, build
+    name: Lint, typecheck & test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20", "22"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
+      # Issue #258: verify registry signatures for installed packages.
+      # `npm audit signatures` exits non-zero if any installed package lacks
+      # a valid registry signature. Any package that ships without a signature
+      # will cause this step to fail; remove it from dependencies or pin a
+      # signed version if that happens.
+      - name: Audit package signatures
+        run: npm audit signatures
       - name: Dependency audit (production)
         run: npm audit --omit=dev --audit-level=high
         continue-on-error: true
+      - name: Format check
+        run: npm run format:check
       - name: Lint
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Coverage report
+        run: npm run test:coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          # Distinguish artifacts per Node version so both matrix legs upload.
+          name: coverage-report-node${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 14
+
+  # Issue #185: fail when code imports a package that package.json does not
+  # declare. The job starts from a clean checkout and runs `npm ci`, so it also
+  # fails if package.json and package-lock.json are out of sync. Unused
+  # dependencies are reported as warnings only. To allow an exception, add the
+  # package name to "ignores" in .depcheckrc.json (see CONTRIBUTING.md).
+  dependencies:
+    name: Declared dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Check that imported packages are declared
+        run: |
+          npx --yes depcheck@1.4.7 --json > depcheck.json || true
+          node -e '
+            const r = require("./depcheck.json");
+            // "@/..." is the tsconfig path alias, not a package.
+            const missing = Object.keys(r.missing || {}).filter((n) => !n.startsWith("@/"));
+            const unused = [...(r.dependencies || []), ...(r.devDependencies || [])];
+            for (const n of unused) console.log("::warning::unused dependency: " + n);
+            if (missing.length) {
+              for (const n of missing) console.log("::error::imported but not declared in package.json: " + n);
+              process.exit(1);
+            }
+          '
+
+  # Issue #259: build once on the pinned Node version (.nvmrc = 20) to keep
+  # CI time short. The matrix above already confirms the code is valid on both
+  # versions; a second build leg would only add time without new signal.
+  build:
+    name: Production build (Node ${{ env.PINNED_NODE }})
+    runs-on: ubuntu-latest
+    env:
+      PINNED_NODE: "20"
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PINNED_NODE }}
+          cache: npm
+      - run: npm ci
       - name: Cache Next.js build cache
         uses: actions/cache@v4
         with:
@@ -35,3 +109,88 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
       - name: Production build
         run: npm run build
+      - name: Report bundle size
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Route | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          npx next build --dry-run 2>&1 | grep -E "^\s+\/" | awk '{print "| " $1 " | " $2 " |"}' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  # Issue #265: build Storybook to verify all stories compile and render.
+  storybook:
+    name: Storybook build (Node ${{ env.PINNED_NODE }})
+    runs-on: ubuntu-latest
+    env:
+      PINNED_NODE: "20"
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PINNED_NODE }}
+          cache: npm
+      - run: npm ci
+      - name: Build Storybook
+        run: npm run build-storybook
+
+  # Issue #262: Playwright smoke tests with mocked API and RPC.
+  e2e:
+    name: Playwright smoke tests (Node ${{ env.PINNED_NODE }})
+    runs-on: ubuntu-latest
+    env:
+      PINNED_NODE: "20"
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PINNED_NODE }}
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ""
+          NEXT_PUBLIC_STREAM_CONTRACT_ID: ""
+      - name: Run Playwright smoke tests
+        run: npx playwright test
+        env:
+          NEXT_PUBLIC_API_BASE_URL: "http://localhost:3000/mock-api"
+          NEXT_PUBLIC_STREAM_CONTRACT_ID: ""
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Production build
+        run: npm run build
+      - name: Start server
+        run: npm start &
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ""
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000 --timeout 30000
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: "./lighthouserc.json"
+          uploadArtifacts: true
+          temporaryPublicStorage: true

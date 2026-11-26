@@ -41,6 +41,29 @@ export function StreamProgress({
     enabled,
   });
 
+  if (state.isLoading || (state.error && state.lastSyncedAt === null)) {
+    return (
+      <div>
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="text-muted">Progress</span>
+          <span className="mono-tabular font-medium">—</span>
+        </div>
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={0}
+          aria-label="Stream progress"
+          aria-busy={state.isLoading}
+          className="h-2 w-full overflow-hidden rounded-full bg-border"
+        />
+        <div className="mt-4 text-sm text-muted">
+          {state.error ? "Unable to load ledger data." : "Loading stream progress…"}
+        </div>
+      </div>
+    );
+  }
+
   const remaining = total - state.streamed;
   const percent = Math.min(100, Math.max(0, state.progress * 100));
 
@@ -50,7 +73,14 @@ export function StreamProgress({
         <span className="text-muted">Progress</span>
         <span className="mono-tabular font-medium">{percent.toFixed(1)}%</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-border">
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        aria-label="Stream progress"
+        className="h-2 w-full overflow-hidden rounded-full bg-border"
+      >
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary-dark to-primary transition-[width] duration-1000 ease-linear motion-reduce:transition-none"
           style={{ width: `${percent}%` }}

@@ -32,3 +32,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Test artifacts
+__snapshots__/
+*.snap
+coverage/
+.nyc_output/
+
+# Editor / OS
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.idea/
+*.iml
+
+# Misc
+*.log

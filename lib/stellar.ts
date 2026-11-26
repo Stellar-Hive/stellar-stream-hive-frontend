@@ -5,26 +5,56 @@
  */
 import { rpc as SorobanRpc, Networks, StrKey } from "@stellar/stellar-sdk";
 
-export const NETWORK = (process.env.NEXT_PUBLIC_STELLAR_NETWORK || "TESTNET") as
-  | "TESTNET"
-  | "PUBLIC"
-  | "FUTURENET";
+type StellarNetwork = "TESTNET" | "PUBLIC" | "FUTURENET";
+
+const VALID_NETWORKS: readonly StellarNetwork[] = ["TESTNET", "PUBLIC", "FUTURENET"];
+
+function resolveNetwork(raw: string | undefined): StellarNetwork {
+  if (!raw) return "TESTNET";
+
+  if ((VALID_NETWORKS as readonly string[]).includes(raw)) {
+    return raw as StellarNetwork;
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `Unknown NEXT_PUBLIC_STELLAR_NETWORK value "${raw}"; expected one of ${VALID_NETWORKS.join(
+      ", "
+    )}. Falling back to TESTNET.`
+  );
+  return "TESTNET";
+}
+
+export const NETWORK = resolveNetwork(process.env.NEXT_PUBLIC_STELLAR_NETWORK);
+
+/**
+ * Label shown in the UI when the app is not on mainnet, so users cannot mistake
+ * testnet streams for real money. Returns null on PUBLIC (mainnet).
+ */
+export function networkNoticeLabel(network: string): string | null {
+  if (network === "PUBLIC") return null;
+  return network.charAt(0).toUpperCase() + network.slice(1).toLowerCase();
+}
+
+export const NETWORK_NOTICE_LABEL = networkNoticeLabel(NETWORK);
 
 export const NETWORK_PASSPHRASE =
   process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE ||
   (NETWORK === "PUBLIC"
     ? Networks.PUBLIC
     : NETWORK === "FUTURENET"
-    ? Networks.FUTURENET
-    : Networks.TESTNET);
+      ? Networks.FUTURENET
+      : Networks.TESTNET);
 
-export const SOROBAN_RPC_URL =
-  process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
+export const SOROBAN_RPC_URL = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
 
-export const HORIZON_URL =
-  process.env.NEXT_PUBLIC_HORIZON_URL || "https://horizon-testnet.stellar.org";
-
-export const STELLAR_EXPERT_NETWORK: "testnet" | "public" = NETWORK === "PUBLIC" ? "public" : "testnet";
+/**
+ * Stellar Expert network slug for building explorer links. Stellar Expert
+ * does not index Futurenet, so this is `null` in that case — callers must
+ * hide explorer links rather than fabricate a wrong (testnet) one.
+ */
+export const STELLAR_EXPERT_NETWORK: "testnet" | "public" | null =
+  NETWORK === "PUBLIC" ? "public" : NETWORK === "FUTURENET" ? null : "testnet";
 
 let cachedServer: SorobanRpc.Server | null = null;
 
@@ -80,5 +110,5 @@ export const NATIVE_XLM_CONTRACT_IDS: Record<string, string> = {
 };
 
 export function nativeTokenContractId(): string {
-  return NATIVE_XLM_CONTRACT_IDS[NETWORK] || NATIVE_XLM_CONTRACT_IDS.TESTNET;
+  return NATIVE_XLM_CONTRACT_IDS[NETWORK] ?? NATIVE_XLM_CONTRACT_IDS.TESTNET;
 }

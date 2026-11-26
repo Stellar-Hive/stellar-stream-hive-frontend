@@ -5,8 +5,10 @@ import {
   csvFilename,
   filterStreams,
   matchesFilter,
+  parseStreamListParams,
   searchStreams,
   sortStreams,
+  streamListParamsToSearchParams,
   streamsToCsv,
 } from "./streamList";
 import type { Stream, StreamStatus } from "@/types";
@@ -47,11 +49,19 @@ describe("filtering", () => {
   it("selects terminal states exactly", () => {
     expect(filterStreams(all, "completed").map((s) => s.id)).toEqual(["4"]);
     expect(filterStreams(all, "cancelled").map((s) => s.id)).toEqual(["5"]);
-    expect(matchesFilter(all[3], "live")).toBe(false);
+    const stream3 = all[3];
+    if (!stream3) throw new Error("Expected all[3] to exist");
+    expect(matchesFilter(stream3, "live")).toBe(false);
   });
   it("counts are consistent with the filters", () => {
     expect(countByFilter(all)).toEqual({ all: 5, live: 3, completed: 1, cancelled: 1 });
     expect(countByFilter([])).toEqual({ all: 0, live: 0, completed: 0, cancelled: 0 });
+  });
+  it("handles empty input for filterStreams", () => {
+    expect(filterStreams([], "all")).toEqual([]);
+    expect(filterStreams([], "live")).toEqual([]);
+    expect(filterStreams([], "completed")).toEqual([]);
+    expect(filterStreams([], "cancelled")).toEqual([]);
   });
 });
 
@@ -60,7 +70,10 @@ describe("searchStreams", () => {
   const RECIPIENT = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
   const list = [
     stream("alpha-1", "active"),
-    stream("beta-2", "active", { sender: "GDQP2KPQGKIHYJGXNUIYOMHARUARCANHJQ4ZWZ5GFPUCUDR6WZ5ZDZ7Q", recipient: "GCBBBBB" }),
+    stream("beta-2", "active", {
+      sender: "GDQP2KPQGKIHYJGXNUIYOMHARUARCANHJQ4ZWZ5GFPUCUDR6WZ5ZDZ7Q",
+      recipient: "GCBBBBB",
+    }),
   ];
   const ids = (found: Stream[]) => found.map((s) => s.id);
 
@@ -140,6 +153,49 @@ describe("csvCell", () => {
     expect(csvCell("-1")).toBe("'-1");
     expect(csvCell("@cmd")).toBe("'@cmd");
   });
+  it("escapes leading whitespace that could trigger formula injection", () => {
+    expect(csvCell("\tvalue")).toBe("'\tvalue");
+    expect(csvCell("\rvalue")).toBe("'\rvalue");
+  });
+  it("handles fields with both quotes and newlines", () => {
+    expect(csvCell('line 1\nsay "hi"\nline 3')).toBe('"line 1\nsay ""hi""\nline 3"');
+  });
+});
+
+describe("parseStreamListParams", () => {
+  it("falls back to defaults for an empty query string", () => {
+    expect(parseStreamListParams(new URLSearchParams(""))).toEqual({ filter: "all", query: "", sort: "default" });
+  });
+  it("reads status, q and sort", () => {
+    expect(parseStreamListParams(new URLSearchParams("status=live&q=alice&sort=newest"))).toEqual({
+      filter: "live",
+      query: "alice",
+      sort: "newest",
+    });
+  });
+  it("ignores an unknown status or sort value", () => {
+    expect(parseStreamListParams(new URLSearchParams("status=bogus&sort=bogus"))).toEqual({
+      filter: "all",
+      query: "",
+      sort: "default",
+    });
+  });
+  it("passes a blank q through as an empty query", () => {
+    expect(parseStreamListParams(new URLSearchParams("q=")).query).toBe("");
+  });
+});
+
+describe("streamListParamsToSearchParams", () => {
+  it("is empty when every field is at its default", () => {
+    expect(streamListParamsToSearchParams({ filter: "all", query: "", sort: "default" }).toString()).toBe("");
+  });
+  it("round-trips through parseStreamListParams", () => {
+    const state = { filter: "cancelled" as const, query: "bob", sort: "largest" as const };
+    expect(parseStreamListParams(streamListParamsToSearchParams(state))).toEqual(state);
+  });
+  it("omits q for a whitespace-only query", () => {
+    expect(streamListParamsToSearchParams({ filter: "all", query: "   ", sort: "default" }).toString()).toBe("");
+  });
 });
 
 describe("csvFilename", () => {
@@ -165,17 +221,20 @@ describe("streamsToCsv", () => {
     );
   });
   it("leaves the cliff column empty when there is none", () => {
-    expect(streamsToCsv([stream("1", "active")]).trim().split("\r\n")[1]).toMatch(/,200,,true$/);
+    expect(
+      streamsToCsv([stream("1", "active")])
+        .trim()
+        .split("\r\n")[1]
+    ).toMatch(/,200,,true$/);
   });
   it("is header-only for an empty list", () => {
     expect(streamsToCsv([]).trim().split("\r\n")).toHaveLength(1);
   });
   it("writes a cancelled stream with its partial withdrawal and no cancel right", () => {
-    const [, row] = streamsToCsv([
-      stream("7", "cancelled", { withdrawnAmount: "2500000", cancellable: false }),
-    ])
+    const [, row] = streamsToCsv([stream("7", "cancelled", { withdrawnAmount: "2500000", cancellable: false })])
       .trim()
       .split("\r\n");
+    if (!row) throw new Error("Expected a data row");
     const cells = row.split(",");
     expect(cells[1]).toBe("cancelled");
     expect(cells[5]).toBe("1.5");
@@ -192,6 +251,7 @@ describe("streamsToCsv", () => {
     ])
       .trim()
       .split("\r\n");
+    if (!row) throw new Error("Expected a data row");
     const cells = row.split(",");
     expect(cells[4]).toBe("NFT");
     expect(cells[5]).toBe("1234567");

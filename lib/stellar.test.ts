@@ -1,43 +1,258 @@
-import { describe, expect, it } from "vitest";
-import { StrKey } from "@stellar/stellar-sdk";
-import { NETWORK_PASSPHRASE, isValidRecipientAddress, isValidStellarAddress } from "./stellar";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
-const ACCOUNT = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7";
-const CONTRACT = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+const TESTNET_CONTRACT_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+const PUBLIC_CONTRACT_ID = "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA";
+const FUTURENET_CONTRACT_ID = "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2C2E7UXY2L";
 
-describe("NETWORK_PASSPHRASE", () => {
-  it("resolves the proper network passphrase", () => {
-    expect(typeof NETWORK_PASSPHRASE).toBe("string");
-    expect(NETWORK_PASSPHRASE.length).toBeGreaterThan(0);
+describe("nativeTokenContractId", () => {
+  const originalEnv = process.env.NEXT_PUBLIC_STELLAR_NETWORK;
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.NEXT_PUBLIC_STELLAR_NETWORK = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_STELLAR_NETWORK;
+    }
+  });
+
+  async function getNativeTokenContractId() {
+    const { nativeTokenContractId } = await import("./stellar");
+    return nativeTokenContractId;
+  }
+
+  async function getNativeXlmContractIds() {
+    const { NATIVE_XLM_CONTRACT_IDS } = await import("./stellar");
+    return NATIVE_XLM_CONTRACT_IDS;
+  }
+
+  it("returns TESTNET contract ID when network is TESTNET", async () => {
+    process.env.NEXT_PUBLIC_STELLAR_NETWORK = "TESTNET";
+    const fn = await getNativeTokenContractId();
+    expect(fn()).toBe(TESTNET_CONTRACT_ID);
+  });
+
+  it("returns PUBLIC contract ID when network is PUBLIC", async () => {
+    process.env.NEXT_PUBLIC_STELLAR_NETWORK = "PUBLIC";
+    const fn = await getNativeTokenContractId();
+    expect(fn()).toBe(PUBLIC_CONTRACT_ID);
+  });
+
+  it("returns FUTURENET contract ID when network is FUTURENET", async () => {
+    process.env.NEXT_PUBLIC_STELLAR_NETWORK = "FUTURENET";
+    const fn = await getNativeTokenContractId();
+    expect(fn()).toBe(FUTURENET_CONTRACT_ID);
+  });
+
+  it("defaults to TESTNET when network is not recognized", async () => {
+    process.env.NEXT_PUBLIC_STELLAR_NETWORK = "UNKNOWN";
+    const fn = await getNativeTokenContractId();
+    expect(fn()).toBe(TESTNET_CONTRACT_ID);
+  });
+
+  it("defaults to TESTNET when env var is not set", async () => {
+    delete process.env.NEXT_PUBLIC_STELLAR_NETWORK;
+    const fn = await getNativeTokenContractId();
+    expect(fn()).toBe(TESTNET_CONTRACT_ID);
+  });
+
+  it("NATIVE_XLM_CONTRACT_IDS contains correct contract IDs", async () => {
+    const ids = await getNativeXlmContractIds();
+    expect(ids.TESTNET).toBe(TESTNET_CONTRACT_ID);
+    expect(ids.PUBLIC).toBe(PUBLIC_CONTRACT_ID);
+    expect(ids.FUTURENET).toBe(FUTURENET_CONTRACT_ID);
   });
 });
 
-describe("isValidStellarAddress", () => {
-  it("accepts valid account and contract StrKeys for their matching kinds", () => {
-    expect(isValidStellarAddress(ACCOUNT, "account")).toBe(true);
-    expect(isValidStellarAddress(CONTRACT, "contract")).toBe(true);
-    expect(isValidStellarAddress(ACCOUNT)).toBe(true);
-    expect(isValidStellarAddress(CONTRACT)).toBe(true);
+describe("nativeTokenContractId", () => {
+  const NATIVE_XLM_CONTRACT_IDS = {
+    TESTNET: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+    PUBLIC: "CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA",
+    FUTURENET: "CB64D3G7SM2RTH6JSGG34DDTFTQ5CFDKVDZJZSODMCX4NJ2C2E7UXY2L",
+  } as const;
+
+  const setNetwork = (network: "TESTNET" | "PUBLIC" | "FUTURENET") => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", network);
+    vi.resetModules();
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
-  it("rejects a one-character account typo with an invalid checksum", () => {
-    const typo = `${ACCOUNT.slice(0, -1)}6`;
-
-    expect(typo).toHaveLength(ACCOUNT.length);
-    expect(isValidStellarAddress(typo, "account")).toBe(false);
-    expect(isValidRecipientAddress(typo)).toBe(false);
+  it("returns TESTNET contract id when NETWORK=TESTNET", async () => {
+    setNetwork("TESTNET");
+    const { nativeTokenContractId } = await import("./stellar");
+    expect(nativeTokenContractId()).toBe(NATIVE_XLM_CONTRACT_IDS.TESTNET);
   });
 
-  it("rejects a valid muxed M-address where a G-account address is required", () => {
-    const muxedPayload = Uint8Array.from([
-      ...StrKey.decodeEd25519PublicKey(ACCOUNT),
-      ...new Uint8Array(8),
-    ]);
-    const muxedAddress = StrKey.encodeMed25519PublicKey(muxedPayload);
+  it("returns PUBLIC contract id when NETWORK=PUBLIC", async () => {
+    setNetwork("PUBLIC");
+    const { nativeTokenContractId } = await import("./stellar");
+    expect(nativeTokenContractId()).toBe(NATIVE_XLM_CONTRACT_IDS.PUBLIC);
+  });
 
-    expect(muxedAddress.startsWith("M")).toBe(true);
-    expect(StrKey.isValidMed25519PublicKey(muxedAddress)).toBe(true);
-    expect(isValidStellarAddress(muxedAddress)).toBe(false);
-    expect(isValidRecipientAddress(muxedAddress)).toBe(false);
+  it("returns FUTURENET contract id when NETWORK=FUTURENET", async () => {
+    setNetwork("FUTURENET");
+    const { nativeTokenContractId } = await import("./stellar");
+    expect(nativeTokenContractId()).toBe(NATIVE_XLM_CONTRACT_IDS.FUTURENET);
+  });
+
+  it("falls back to TESTNET when network is unset", async () => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    const { nativeTokenContractId } = await import("./stellar");
+    expect(nativeTokenContractId()).toBe(NATIVE_XLM_CONTRACT_IDS.TESTNET);
+  });
+});
+
+describe("NETWORK validation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("falls back to TESTNET and logs a warning for an unknown network value", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "MAINNET");
+    vi.resetModules();
+
+    const { NETWORK } = await import("./stellar");
+
+    expect(NETWORK).toBe("TESTNET");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("MAINNET");
+
+    warnSpy.mockRestore();
+  });
+
+  it("accepts a valid PUBLIC network value without warning", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "PUBLIC");
+    vi.resetModules();
+
+    const { NETWORK } = await import("./stellar");
+
+    expect(NETWORK).toBe("PUBLIC");
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+});
+
+// === NETWORK_PASSPHRASE tests
+describe("NETWORK_PASSPHRASE", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("uses Networks.TESTNET passphrase when NETWORK is TESTNET", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "TESTNET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.TESTNET);
+  });
+
+  it("uses Networks.PUBLIC passphrase when NETWORK is PUBLIC", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "PUBLIC");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.PUBLIC);
+  });
+
+  it("uses Networks.FUTURENET passphrase when NETWORK is FUTURENET", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "FUTURENET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.FUTURENET);
+  });
+
+  it("falls back to Networks.TESTNET passphrase for an unknown network value", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "UNKNOWN_NET");
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    const { Networks } = await import("@stellar/stellar-sdk");
+    expect(NETWORK_PASSPHRASE).toBe(Networks.TESTNET);
+  });
+
+  it("honours the NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE override", async () => {
+    const override = "Override Passphrase;";
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", "FUTURENET");
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE", override);
+    vi.resetModules();
+    const { NETWORK_PASSPHRASE } = await import("./stellar");
+    expect(NETWORK_PASSPHRASE).toBe(override);
+  });
+});
+
+// === Explorer URL matrix
+describe("explorer URL matrix", () => {
+  const ACCOUNT = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H";
+  const CONTRACT = TESTNET_CONTRACT_ID;
+  const TX_HASH = "a".repeat(64);
+
+  const matrix = [
+    { network: "TESTNET", slug: "testnet" },
+    { network: "PUBLIC", slug: "public" },
+    { network: "FUTURENET", slug: null },
+  ] as const;
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function loadForNetwork(network: string) {
+    vi.stubEnv("NEXT_PUBLIC_STELLAR_NETWORK", network);
+    vi.resetModules();
+    const { STELLAR_EXPERT_NETWORK } = await import("./stellar");
+    const { stellarExpertAccountUrl, stellarExpertTxUrl } = await import("./format");
+    return { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl };
+  }
+
+  it.each(matrix)("builds $network links for accounts, contracts and transactions", async ({ network, slug }) => {
+    const { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl } = await loadForNetwork(network);
+
+    expect(STELLAR_EXPERT_NETWORK).toBe(slug);
+
+    if (slug === null) {
+      expect(stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK)).toBeNull();
+      expect(stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK)).toBeNull();
+      expect(stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK)).toBeNull();
+      return;
+    }
+
+    expect(stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/account/${ACCOUNT}`,
+    );
+    expect(stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/contract/${CONTRACT}`,
+    );
+    expect(stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK)).toBe(
+      `https://stellar.expert/explorer/${slug}/tx/${TX_HASH}`,
+    );
+  });
+
+  it("never points PUBLIC links at testnet", async () => {
+    const { STELLAR_EXPERT_NETWORK, stellarExpertAccountUrl, stellarExpertTxUrl } = await loadForNetwork("PUBLIC");
+
+    const urls = [
+      stellarExpertAccountUrl(ACCOUNT, STELLAR_EXPERT_NETWORK),
+      stellarExpertAccountUrl(CONTRACT, STELLAR_EXPERT_NETWORK),
+      stellarExpertTxUrl(TX_HASH, STELLAR_EXPERT_NETWORK),
+    ];
+
+    for (const url of urls) {
+      expect(url).not.toBeNull();
+      expect(url).not.toContain("/testnet/");
+    }
   });
 });

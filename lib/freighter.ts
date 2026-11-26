@@ -13,6 +13,7 @@ import {
   getNetworkDetails,
   signTransaction,
 } from "@stellar/freighter-api";
+import { describeContractError } from "./contractErrors";
 
 export class FreighterNotInstalledError extends Error {
   constructor() {
@@ -139,6 +140,10 @@ export function describeFreighterError(err: unknown): string {
   if (err instanceof Error) {
     if (/declined|rejected|user cancelled/i.test(err.message)) {
       return "Transaction was rejected in your wallet.";
+    }
+    const contractMessage = describeContractError(err.message);
+    if (contractMessage) {
+      return contractMessage;
     }
     return err.message;
   }

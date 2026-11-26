@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useAsync } from "@/hooks/useAsync";
 import { fetchStreamById } from "@/lib/api";
 import { fetchStreamOnChain, isStreamContractConfigured } from "@/lib/contracts";
 import type { Stream } from "@/types";
@@ -13,52 +14,41 @@ export interface UseStreamResult {
   refetch: () => Promise<void>;
 }
 
+/** A background tab doesn't refetch; once visible again, data older than this triggers one refetch. */
+const STALE_MS = 30_000;
+
 /**
  * Loads a single stream by id, preferring the indexer API (fast, includes
  * derived status) and falling back to a direct on-chain read when the API is
  * unavailable or doesn't know about the stream yet.
  */
 export function useStream(id: string): UseStreamResult {
-  const [stream, setStream] = useState<Stream | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
+  const lastFetchedAtRef = useRef<number | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setNotConfigured(false);
-    try {
+  const result = useAsync(
+    async (isStale: () => boolean) => {
+      setNotConfigured(false);
       const fromApi = await fetchStreamById(id);
+      if (isStale()) return null;
       if (fromApi) {
-        setStream(fromApi);
-        return;
+        return fromApi;
       }
 
       if (!isStreamContractConfigured()) {
         setNotConfigured(true);
-        setStream(null);
-        return;
+        return null;
       }
 
       const fromChain = await fetchStreamOnChain(id);
+      if (isStale()) return null;
       if (!fromChain) {
-        setError("Stream not found.");
-        setStream(null);
-        return;
+        throw new Error("Stream not found.");
       }
-      setStream(fromChain);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load stream.");
-      setStream(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
+      return fromChain;
+    },
+    [id]
+  );
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { stream, isLoading, error, notConfigured, refetch: load };
+  return { stream: result.data, isLoading: result.isLoading, error: result.error, notConfigured, refetch: result.refetch };
 }

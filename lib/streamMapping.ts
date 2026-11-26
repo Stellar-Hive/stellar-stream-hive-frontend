@@ -33,9 +33,7 @@ export const defaultTokenResolver: TokenResolver = (contractId) => ({
 /** Builds a resolver that knows about the native XLM contract and falls back otherwise. */
 export function makeTokenResolver(nativeContractId: string): TokenResolver {
   return (contractId) =>
-    contractId === nativeContractId
-      ? { contractId, symbol: "XLM", decimals: 7 }
-      : defaultTokenResolver(contractId);
+    contractId === nativeContractId ? { contractId, symbol: "XLM", decimals: 7 } : defaultTokenResolver(contractId);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +82,10 @@ export interface ApiReadiness {
  * "cliff" state, so an active stream still before its cliff ledger is shown as
  * "cliff" (accruing, but nothing withdrawable yet).
  */
-export function mapApiStatus(view: Pick<ApiStreamView, "status" | "start_ledger" | "cliff_ledger">, currentLedger?: number): StreamStatus {
+export function mapApiStatus(
+  view: Pick<ApiStreamView, "status" | "start_ledger" | "cliff_ledger">,
+  currentLedger?: number
+): StreamStatus {
   switch (view.status) {
     case "pending":
       return "scheduled";
@@ -97,6 +98,44 @@ export function mapApiStatus(view: Pick<ApiStreamView, "status" | "start_ledger"
         ? "cliff"
         : "active";
   }
+}
+
+/**
+ * Guards against a missing or renamed field in a `StreamView` JSON item
+ * before it reaches `mapApiStream`, where a `undefined` would otherwise
+ * throw deep inside a render (reading `.toString()` off `undefined`) or
+ * silently surface as `NaN`.
+ */
+export function isValidApiStream(value: unknown): value is ApiStreamView {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.sender === "string" &&
+    typeof v.recipient === "string" &&
+    typeof v.token === "string" &&
+    typeof v.total_amount === "string" &&
+    typeof v.withdrawn === "string" &&
+    typeof v.start_ledger === "number" &&
+    typeof v.end_ledger === "number" &&
+    typeof v.cliff_ledger === "number" &&
+    typeof v.cancellable === "boolean" &&
+    (v.status === "pending" || v.status === "active" || v.status === "completed" || v.status === "cancelled") &&
+    typeof v.created_at === "number"
+  );
+}
+
+/** Same purpose as {@link isValidApiStream}, for the single `/stats` payload. */
+export function isValidApiStats(value: unknown): value is ApiStats {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.total_streams === "number" &&
+    typeof v.active_streams === "number" &&
+    typeof v.total_streamed === "string" &&
+    typeof v.total_withdrawn === "string" &&
+    (v.total_value_locked === undefined || typeof v.total_value_locked === "string")
+  );
 }
 
 export function mapApiStream(
@@ -115,6 +154,7 @@ export function mapApiStream(
     token: resolveToken(view.token),
     totalAmount: view.total_amount,
     withdrawnAmount: view.withdrawn,
+    ...(view.status === "cancelled" && { frozenWithdrawableAmount: view.withdrawable_amount }),
     startLedger: view.start_ledger,
     endLedger: view.end_ledger,
     cliffLedger: hasCliff ? view.cliff_ledger : undefined,
@@ -165,7 +205,9 @@ function variantName(status: string | string[]): string {
 }
 
 export function deriveOnChainStatus(raw: RawStreamRecord, currentLedger?: number): StreamStatus {
-  if (variantName(raw.status) === "Cancelled") return "cancelled";
+  const status = variantName(raw.status);
+  if (status === "Cancelled") return "cancelled";
+  if (status === "Completed") return "completed";
   if (currentLedger === undefined) return "active";
   if (currentLedger < raw.start_ledger) return "scheduled";
   if (currentLedger >= raw.end_ledger) return "completed";

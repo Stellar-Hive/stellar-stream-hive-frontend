@@ -30,7 +30,12 @@ export function CardSkeleton() {
 /** Renders `count` skeleton cards in the same grid the list pages use for real cards. */
 export function CardSkeletonGrid({ count = 6 }: { count?: number }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading streams">
+    <div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      role="status"
+      aria-label="Loading streams"
+      aria-busy="true"
+    >
       {Array.from({ length: count }, (_, i) => (
         <CardSkeleton key={i} />
       ))}

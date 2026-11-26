@@ -7,7 +7,10 @@ interface ErrorStateProps {
 /** A consistent error display for failed fetches / rejected transactions / RPC errors. */
 export function ErrorState({ title = "Something went wrong", message, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 px-6 py-10 text-center">
+    <div
+      role="alert"
+      className="flex flex-col items-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 px-6 py-10 text-center"
+    >
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger/15 text-danger">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 9v4M12 17h.01" />

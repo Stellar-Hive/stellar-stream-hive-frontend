@@ -1,11 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { fetchWithdrawableOnChain, withdrawOnChain, ContractNotConfiguredError } from "@/lib/contracts";
+import {
+  fetchWithdrawableOnChain,
+  withdrawOnChain,
+  ContractNotConfiguredError,
+  TransactionTimeoutError,
+} from "@/lib/contracts";
+import { TransactionTimeoutNotice } from "@/components/ui/TransactionTimeoutNotice";
 import { describeFreighterError } from "@/lib/freighter";
-import { formatBaseUnits, parseAmountToBaseUnits, stellarExpertTxUrl } from "@/lib/format";
+import { formatBaseUnits, stellarExpertTxUrl } from "@/lib/format";
 import { STELLAR_EXPERT_NETWORK } from "@/lib/stellar";
+import { checkAmount } from "@/lib/validation";
+import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import {
+  WITHDRAW_NOTHING_AVAILABLE,
+  WITHDRAW_AMOUNT_ZERO,
+  withdrawExceedsAvailable,
+  WITHDRAW_CHECKING,
+  WITHDRAW_SIGNING,
+  WITHDRAW_SUBMITTING,
+  WITHDRAW_CONFIRM_BUTTON,
+  WITHDRAW_SUCCESS_HEADING,
+  WITHDRAW_VIEW_TX,
+} from "@/lib/messages";
 
 type Status = "idle" | "checking" | "signing" | "submitting" | "success" | "error";
 
@@ -37,6 +56,7 @@ export function WithdrawButton({
   const [useCustom, setUseCustom] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [timedOutHash, setTimedOutHash] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isFillingMax, setIsFillingMax] = useState(false);
 
@@ -45,26 +65,29 @@ export function WithdrawButton({
 
   async function handleWithdraw() {
     setError(null);
+    setTimedOutHash(null);
     setStatus("checking");
     try {
       const actualWithdrawable = await fetchWithdrawableOnChain(streamId);
 
       let amount = actualWithdrawable;
       if (useCustom) {
-        const requested = parseAmountToBaseUnits(customAmount, tokenDecimals);
-        if (requested <= 0n) throw new Error("Enter an amount greater than zero.");
+        const result = checkAmount(customAmount, tokenDecimals);
+        if (!result.ok) throw new Error(result.reason);
+        const requested = result.baseUnits;
+        if (requested <= 0n) throw new Error(WITHDRAW_AMOUNT_ZERO);
         if (requested > actualWithdrawable) {
           throw new Error(
-            `Requested amount exceeds what's currently withdrawable on-chain ` +
-              `(${formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: 7, minDecimals: 2 })} ${tokenSymbol}). ` +
-              `Refresh and try again.`
+            withdrawExceedsAvailable(
+              `${formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: 7, minDecimals: 2 })} ${tokenSymbol}`
+            )
           );
         }
         amount = requested;
       }
 
       if (amount <= 0n) {
-        throw new Error("Nothing is withdrawable yet.");
+        throw new Error(WITHDRAW_NOTHING_AVAILABLE);
       }
 
       setStatus("signing");
@@ -73,6 +96,11 @@ export function WithdrawButton({
       setStatus("success");
       onWithdrawn?.();
     } catch (err) {
+      if (err instanceof TransactionTimeoutError) {
+        setTimedOutHash(err.hash);
+        setStatus("error");
+        return;
+      }
       if (err instanceof ContractNotConfiguredError) {
         setError(err.message);
       } else {
@@ -89,7 +117,9 @@ export function WithdrawButton({
     setIsFillingMax(true);
     try {
       const actualWithdrawable = await fetchWithdrawableOnChain(streamId);
-      setCustomAmount(formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: tokenDecimals, grouped: false }));
+      setCustomAmount(
+        formatBaseUnits(actualWithdrawable, tokenDecimals, { maxDecimals: tokenDecimals, grouped: false })
+      );
     } catch (err) {
       if (err instanceof ContractNotConfiguredError) {
         setError(err.message);
@@ -103,27 +133,35 @@ export function WithdrawButton({
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-primary">
+      <Button onClick={() => setOpen(true)}>
         Withdraw
-      </button>
+      </Button>
     );
   }
 
   if (status === "success" && txHash) {
     return (
-      <div className="card border-primary/30 bg-primary/5">
-        <p className="font-semibold text-primary">Withdrawal submitted</p>
-        <a
-          href={stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block text-sm text-accent underline"
-        >
-          View transaction on Stellar Expert
-        </a>
-        <button
-          type="button"
-          className="btn-secondary mt-4 w-full"
+      <div role="status" className="card border-primary/30 bg-primary/5">
+        <p className="font-semibold text-primary">{WITHDRAW_SUCCESS_HEADING}</p>
+        {(() => {
+          const explorerUrl = stellarExpertTxUrl(txHash, STELLAR_EXPERT_NETWORK);
+          return (
+            explorerUrl && (
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-sm text-accent underline"
+              >
+                {WITHDRAW_VIEW_TX}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            )
+          );
+        })()}
+        <Button
+          variant="secondary"
+          className="mt-4 w-full"
           onClick={() => {
             setOpen(false);
             setStatus("idle");
@@ -133,7 +171,7 @@ export function WithdrawButton({
           }}
         >
           Close
-        </button>
+        </Button>
       </div>
     );
   }
@@ -177,38 +215,33 @@ export function WithdrawButton({
             onChange={(e) => setCustomAmount(e.target.value)}
             className="input-field flex-1"
           />
-          <button
-            type="button"
-            onClick={handleFillMax}
-            disabled={isBusy || isFillingMax}
-            className="btn-secondary"
-          >
+          <button type="button" onClick={handleFillMax} disabled={isBusy || isFillingMax} className="btn-secondary">
             {isFillingMax ? <Spinner size="sm" /> : "Max"}
           </button>
         </div>
       )}
 
-      {error && <p className="mb-3 text-sm text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {timedOutHash && <TransactionTimeoutNotice hash={timedOutHash} className="mb-3 text-sm text-danger" />}
 
       <div className="flex gap-2">
         <button type="button" onClick={handleWithdraw} disabled={isBusy} className="btn-primary flex-1">
           {isBusy ? (
             <>
               <Spinner size="sm" decorative />
-              {status === "checking" && "Checking on-chain balance…"}
-              {status === "signing" && "Confirm in wallet…"}
-              {status === "submitting" && "Submitting…"}
+              {status === "checking" && WITHDRAW_CHECKING}
+              {status === "signing" && WITHDRAW_SIGNING}
+              {status === "submitting" && WITHDRAW_SUBMITTING}
             </>
           ) : (
-            "Confirm withdrawal"
+            WITHDRAW_CONFIRM_BUTTON
           )}
         </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          disabled={isBusy}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={() => setOpen(false)} disabled={isBusy} className="btn-secondary">
           Cancel
         </button>
       </div>
