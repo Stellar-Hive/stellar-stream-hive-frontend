@@ -5,5 +5,5 @@ const lintCommands = (files) => files.map((file) => `next lint --fix --file "${f
 
 export default {
   "*.{ts,tsx,js,jsx,mjs}": lintCommands,
-  "*.{ts,tsx,js,jsx,mjs,json,md,css}": ["prettier --write"],
+  "*.{ts,tsx,js,jsx,mjs,json,md,css}": ["npx --no-install prettier --write"],
 };
