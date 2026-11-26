@@ -35,7 +35,7 @@
     "@storybook/addon-essentials": "^8.0.0",
     "@storybook/nextjs": "^8.0.0",
     "@testing-library/jest-dom": "8.0.0",
-    "@testing-library/react": "16.2.0",
+    "@testing-library/react": "16.3.3",
     "@types/node": "22.10.7",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
